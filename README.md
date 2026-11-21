@@ -1,177 +1,71 @@
-# AI Compliance Gap Analyzer
+# Noacue Rulemap
 
-**Quickly see the potential compliance gaps between your AI technology and your industry's regulatory requirements.**
+An open, checked map of the rules AI products face, for small teams with no legal budget.
 
-Built for teams whose compliance obligations are real and ongoing: past the point where you can defer them, not yet big enough to justify a compliance department. Describe your AI use case, your tech stack, and your industry — the agent maps which regulations plausibly apply, researches them against the regulators' own sources, cross-references them with your technology's obligations, and delivers a clear, scannable gap report in a few minutes.
+**Demo: [yeyfreya.github.io/noacue-rulemap/rulemap-demo](https://yeyfreya.github.io/noacue-rulemap/rulemap-demo/)**
 
-> **[Try the Live Demo →](https://ai-compliance-gap-analyzer.streamlit.app/)**
->
-> No sign-up. No API keys. Just pick a scenario or enter your own.
+Small teams build AI products with no lawyer and no compliance person, and they cannot see which rules and AI risks they face. A team describes its AI use case. Rulemap researches and maps out which rules are worth a look, each with its source and an exact quote. Every checked rule adds to an open dataset, so the next team starts ahead.
 
-![AI Compliance Gap Analyzer — live demo screenshot](assets/screenshot.jpg)
+## How it works
 
----
+1. It looks in an open dataset of rules people have checked.
+2. For what is new, it researches in real time: a search tool fetches official sources.
+3. A small open model reads one rule or one page at a time and answers: is it worth a look for this use case, and what does it ask, quoted exactly. Code checks every quote.
 
-## What You Get
+The output is a report and a growing dataset.
 
-A structured compliance gap report covering:
+## What is different
 
-- **Scope & Assumptions** — who the analysis assumed you are, what it inferred rather than knew, and what would change if an assumption is wrong
-- **Compliance Gap Matrix** — executive summary table with each potential gap, risk level, regulatory basis, and recommended action
-- **Key Regulatory Landscape** — which frameworks and requirements apply to your case
-- **Gap Details** — what each gap means and why it matters, framed as areas worth confirming (never assumptions about what you have or haven't done)
-- **Recommended Next Steps** — grouped by priority so you know where to start
-- **Coverage** — what was considered, what was ruled out *and why*, and which authoritative sources were actually searched
-- **Bottom Line** — a concise takeaway you can act on immediately
+- **Private use builds public knowledge.** Each analysis is designed to run on the team's own laptop. The more Rulemap is used, the less research and compute each team needs.
+- **AI researches, code checks.** Rulemap scopes a product description, then researches the rules worth a look: first in the open dataset, then online in official sources. Code, not AI, checks every quote against its source. No chatbot, no answers from memory.
+- **Built to get the most from a small model.** The system breaks the work into small questions and hands the model checked sources to read. Reliability comes from the design, not from model size.
 
-Every source is labelled by tier — whether it came from a regulator's or standards body's own
-site, or from secondary commentary — so you can see what each finding rests on.
+## How your data is handled
 
-Reports use a warm, supportive tone — like a knowledgeable friend pointing out things you might want to look into, not an auditor issuing violations.
+Rulemap is designed so that what you type stays on your laptop, in files you can delete. Nothing is shared unless you choose to contribute. A contribution holds only public information: the rule, its source, the industry and the AI use case category. No team is named.
 
-> Showcase reports are included in the repo — see [`reports/`](reports/) for examples across healthcare, fintech, and RegTech.
+## Where it stands today
 
----
+- **The demo** replays real saved runs from seven use cases. Its dataset is a sample: 38 rules, 17 of them checked by a person. See [`DATASET.md`](DATASET.md).
+- **A small model on a laptop** (Olmo 3 7B, on a 16 GB laptop) reads rules from the dataset, decides which are worth a look, and explains each with an exact quote. See [`RESULTS.md`](RESULTS.md).
+- **The previous version, the AI Compliance Gap Analyzer,** is the code in this repository. It has been open source and in use since February 2026. Note: it does the research on a large hosted model, so it sends what you type to that provider. It taught us that a bigger model makes an answer more convincing, not more correct. Rulemap is the redesign that came out of that: built around small models for the same purpose.
 
-## How It Works
+## What we tested (November 2026)
 
-```
-   ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    ┌───────────────┐
-   │  You provide  │───▶│  Agent scopes │───▶│ Agent researches │─▶│  Agent writes │
-   │  3 inputs     │    │  the territory│    │  official sources │  │  your report  │
-   └───────────────┘    └───────────────┘    └───────────────┘    └───────────────┘
-                               │                      │                    │
-                     jurisdiction, profession,   authoritative        gaps, assumptions
-                     data, activity, vendor      domains first        and coverage
-                                                                            │
-                                                                            ▼
-                                                                Compliance gap report
-                                                                typically 2–3 minutes
-```
+| | Rulemap's design (7B model) | Small models swapped into the previous version (4 models) |
+|---|---|---|
+| Rules for a hiring tool | All 9 hiring rules found, no health rules | 3 of 4 models listed no hiring law |
+| Same product, reworded | 1 answer in 84 changed | About half of the rule list changed |
+| Time per report | 2.2 to 2.7 minutes | 2.6 to 6.0 minutes |
 
-**Why the scoping step exists.** Before any searching, the agent maps the regulatory territory
-across five fixed dimensions — which jurisdictions apply, which professional body governs the
-field, what data is handled, what the AI actually does, and whose technology processes it. That
-map decides what gets researched, so coverage comes from the dimensions rather than from
-whichever queries happened to be invented. It also produces the list of authoritative domains
-for your specific scenario, which is what makes official-source-first research possible.
+The 14 rules used in this test were drafts, not yet checked by a person, and the reports have not been scored. Details: [`RESULTS.md`](RESULTS.md).
 
----
+## What is next
 
-## Example
+- Real-time research on a small model.
+- More checked rules, from more real use cases.
 
-**Input:**
-- Use case: "AI-powered resume screening tool"
-- Technology: "OpenAI GPT-4 API"
-- Industry: "Enterprise HR (US-based)"
+## In this repository
 
-**What the report covers:**
-- Employment discrimination law (Title VII, ADA, state AI hiring laws)
-- AI transparency and explainability requirements
-- Data privacy obligations (CCPA, EEOC guidance)
-- Vendor-specific compliance (OpenAI's usage policies for HR decisions)
-- Bias testing and adverse impact analysis gaps
+| Path | What it is |
+|---|---|
+| `rulemap-demo/` | The demo page and its sample dataset |
+| `DATASET.md` | What is in the sample dataset, and what each field means |
+| `RESULTS.md` | The small-model test results, failed attempts included |
+| `PREVIOUS-VERSION.md` | How to run the previous version, the AI Compliance Gap Analyzer |
+| `agent.py`, `streamlit_app.py` and the files beside them | The code of the previous version |
+| `CHANGELOG.md` | Version history |
 
----
+## Contribute
 
-## What's Coming Next
+Found a rule that is wrong or missing? Open an issue. We check it against the official source before anything changes. Code contributions are welcome too.
 
-- Consistent report structure enforcement (full template)
-- PDF report generation
-- Research adequacy loop (agent validates its own research before writing)
-- Plugin version for AI agent platforms (OpenClaw and similar)
+## Not legal advice
 
----
+Rulemap points at what is worth a look. It is not legal advice, and it does not confirm that any product meets any rule. The dataset on the demo page is a sample. Check anything you act on against the source.
 
-## Run It Locally
+## Author and license
 
-### Prerequisites
+Built by **Freya Ye Yu**, Noacue. [LinkedIn](https://www.linkedin.com/in/yeyufreya/) · [Portfolio](https://www.yeyufreya.com/)
 
-- Python 3.14+
-- [Anthropic API key](https://console.anthropic.com/)
-- [Tavily API key](https://tavily.com/)
-
-### Setup
-
-```bash
-git clone https://github.com/yeyfreya/ai-compliance-gap-analyzer.git
-cd ai-compliance-gap-analyzer
-
-python -m venv venv
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-pip install -r requirements.txt
-```
-
-Create a `.env` file in the project root:
-
-```
-ANTHROPIC_API_KEY = <your-anthropic-key>
-TAVILY_API_KEY   = <your-tavily-key>
-```
-
-### Web UI
-
-```bash
-python -m streamlit run streamlit_app.py
-```
-
-Opens at `http://localhost:8501`. Pick a preset scenario or enter custom inputs, then click **Run Analysis**.
-
-### CLI
-
-```bash
-python agent.py <scenario>
-```
-
-Available scenarios:
-
-```bash
-python agent.py hr          # AI resume screening — US employment law
-python agent.py healthcare  # AI diagnostics — HIPAA, FDA
-python agent.py fintech     # AI credit scoring — UK FCA, GDPR
-python agent.py education   # AI essay grading — FERPA, COPPA
-python agent.py regtech     # AI compliance analyzer — RegTech SaaS
-```
-
----
-
-## Built With
-
-Claude Sonnet 4.5 (Anthropic) · Tavily · Langfuse · Supabase · Streamlit · Python
-
----
-
-## Current Status
-
-**v0.7** — Active development. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical decisions.
-
-**Known limitations** — this tool highlights areas worth reviewing; it is not legal advice, and
-every report says so:
-- Analysis typically takes 2–3 minutes, longer for complex or multi-jurisdiction cases
-- **Results vary between runs.** The set of regulations considered is stable, but which one is
-  ranked most urgent can differ when the same inputs are run twice
-- **Source tiering is not airtight.** Research prefers regulators' and standards bodies' own
-  sites, but the search provider's domain filter is not strict, so some secondary commentary
-  can still be labelled as an official source
-- Verify anything you act on against the primary source — the report lists which authoritative
-  domains were searched so you can check its work
-
-See [CHANGELOG.md](CHANGELOG.md) for version history and [docs/iterations/](docs/iterations/) for detailed analysis per version.
-
----
-
-## Contributing
-
-See the [project structure](docs/DOCUMENTATION-GUIDE.md) and [branching guide](docs/BRANCHING-GUIDE.md) for how the codebase and git workflow are organized.
-
----
-
-## Author
-
-**Freya Ye Yu** — [LinkedIn](https://www.linkedin.com/in/yeyufreya/) · [Portfolio](https://www.yeyufreya.com/)
-
-MIT License
+Open source. See [`LICENSE`](LICENSE).

@@ -1,0 +1,1543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noacue Rulemap: sample demo</title>
+<meta name="description" content="Noacue Rulemap is an open, checked map of the rules AI products face. This page replays real saved runs on sample data.">
+<link rel="icon" href="assets/favicon-mark.svg">
+<style>
+:root {
+  --font: Arial, Helvetica, sans-serif;
+  --paper: #f0f1f4;
+  --panel: #fafbfd;
+  --ink: #202632;
+  --muted: #545d6c;
+  --line: #cdd1da;
+  --line-strong: #b6c0cd;
+  --violet: #55528c;
+  --violet-soft: #7475a5;
+  --violet-wash: #ebeaf7;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font: 1rem/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img { max-width: 100%; display: block; }
+h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3 {
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+h1 { font-size: clamp(2.5rem, 5vw, 4.2rem); }
+h2 { font-size: clamp(1.6rem, 2.6vw, 2.2rem); }
+h3 { font-size: 1.25rem; letter-spacing: -0.03em; line-height: 1.2; }
+p { text-wrap: pretty; }
+a:focus-visible, button:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid var(--violet);
+  outline-offset: 3px;
+}
+::selection { background: #d8d8f2; color: #202632; }
+.shell { width: min(1240px, calc(100% - 4rem)); margin-inline: auto; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: fixed; z-index: 100; top: -100px; left: 1rem;
+  background: #fff; padding: 1rem; border: 1px solid var(--ink);
+}
+.skip-link:focus { top: 1rem; }
+
+/* ---------- top: menu bar and status line ---------- */
+.top {
+  position: sticky; top: 0; z-index: 40;
+  background: #eef0f4f5;
+  border-bottom: 1px solid #bfc6d3;
+  backdrop-filter: blur(16px);
+}
+.nav-shell {
+  min-height: 68px; padding-block: 0.8rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+}
+.wordmark {
+  font-weight: 600; font-size: 1.7rem; letter-spacing: -0.075em; line-height: 1;
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+.wordmark .dot { color: var(--violet-soft); }
+.wordmark img { width: 1.15em; height: 1.15em; margin-right: 0.22em; }
+.wordmark .product {
+  font-weight: 500; letter-spacing: -0.03em; font-size: 1.05rem; color: var(--muted);
+  margin-left: 0.7rem; padding-left: 0.7rem; border-left: 1px solid var(--line-strong);
+}
+.top nav { display: flex; gap: 1.5rem; font-size: 0.9375rem; }
+.top nav a { text-decoration: none; color: #384151; padding-block: 0.4rem; }
+.top nav a:hover { color: var(--violet); }
+.status-line {
+  border-top: 1px solid #d5d9e2;
+  background: #e9ebf3;
+  font-size: 0.8438rem; line-height: 1.45; color: #2c3340;
+}
+.status-line .shell { padding-block: 0.5rem; display: flex; gap: 0.75rem; align-items: baseline; }
+.tag {
+  flex: none; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+  color: #3f3d70; background: var(--violet-wash); border: 1px solid #cfcdea; border-radius: 5px; padding: 0.12rem 0.45rem;
+}
+
+/* ---------- intro band ---------- */
+.intro {
+  position: relative; isolation: isolate; overflow: hidden;
+  background: #e4e7ee; border-bottom: 1px solid var(--line);
+}
+.intro-art {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 70% 38%; z-index: -2;
+}
+.intro:after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, #e9ecf2f2 0%, #e9ecf2cc 42%, #e9ecf200 78%);
+}
+.intro-content { padding-block: 3.2rem 3.4rem; }
+.eyebrow {
+  font-size: 0.8125rem; letter-spacing: 0.11em; text-transform: uppercase; font-weight: 600;
+  line-height: 1.5; color: var(--muted); margin-bottom: 1.1rem;
+}
+.lead { font-size: 1.2rem; line-height: 1.55; max-width: 34rem; margin-top: 1.1rem; color: #3b4452; }
+
+/* ---------- tabs ---------- */
+main { padding-block: 2.2rem 4.5rem; }
+.tabs { display: flex; gap: 2rem; border-bottom: 1px solid #c3cad4; margin-bottom: 1.8rem; }
+.tabs button {
+  padding: 0.85rem 0; border: 0; border-bottom: 3px solid transparent; background: transparent;
+  color: #5b6575; font-size: 1.0625rem; font-weight: 500; letter-spacing: -0.01em; margin-bottom: -1px;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); border-color: var(--violet); }
+.tabs button:hover { color: var(--ink); }
+[role="tabpanel"][hidden] { display: none; }
+
+/* ---------- shared pieces ---------- */
+.button {
+  display: inline-flex; justify-content: center; align-items: center; gap: 1rem;
+  border: 1px solid #292f3b; border-radius: 999px;
+  background: linear-gradient(150deg, #424855, #202630 70%); color: #fff;
+  padding: 0.8rem 1.3rem; min-height: 46px; font-size: 0.9375rem; font-weight: 500; line-height: 1.25;
+  box-shadow: inset 0 1px 1px #ffffff4d, 0 5px 12px #252d3b12;
+  transition: transform 0.2s, box-shadow 0.2s; text-decoration: none;
+}
+.button:hover { transform: translateY(-2px); box-shadow: inset 0 1px 1px #ffffff4d, 0 9px 24px #252d3b25; }
+.button-light { background: linear-gradient(135deg, #fff, #e8e9f1); border-color: #afb4c0; color: var(--ink); }
+.button-small { min-height: 40px; padding: 0.55rem 1rem; font-size: 0.875rem; gap: 0.7rem; }
+.button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.arrow { width: 1em; height: 1em; flex: none; }
+.text-button {
+  border: 0; background: none; padding: 0.3rem 0; font-size: 0.9375rem; font-weight: 600;
+  border-bottom: 1px solid #9ca3b2;
+}
+.text-button:hover { color: var(--violet); border-color: var(--violet); }
+.micro { font-size: 0.8438rem; color: var(--muted); line-height: 1.5; }
+.panel {
+  border: 1px solid var(--line-strong); border-radius: 20px; background: var(--panel);
+  box-shadow: 0 25px 60px #48577910, inset 0 1px 0 white;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;
+  font-size: 0.75rem; line-height: 1.3; border-radius: 6px; padding: 0.18rem 0.5rem;
+  border: 1px solid #c7cdd8; background: #fff; color: #333b49;
+}
+.chip-checked { background: #202632; border-color: #202632; color: #fff; }
+.chip-found { background: #fff; border: 1.5px solid #202632; color: #202632; }
+.chip-out { border-style: dashed; color: #4f5868; }
+.chip-new { background: var(--violet-wash); border-color: #cfcdea; color: #3f3d70; }
+.dot { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; flex: none; }
+.dot-checked { background: #202632; border: 2px solid #202632; }
+.dot-found { background: #fff; border: 2px solid #202632; }
+.sq { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 3px; background: var(--violet); flex: none; }
+
+/* ---------- counts ---------- */
+.counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.4rem; }
+.count { border-top: 1px solid #aeb5c2; padding-top: 0.8rem; }
+.count strong { display: block; font-size: 2.4rem; font-weight: 500; letter-spacing: -0.055em; line-height: 1.1; }
+.count span { font-size: 0.875rem; color: var(--muted); }
+
+/* ---------- dataset tab ---------- */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.4rem; margin-bottom: 1rem; }
+.toolbar .spacer { flex: 1; }
+.segmented { display: inline-flex; border: 1px solid #afb4c0; border-radius: 999px; padding: 3px; background: #fff; }
+.segmented button {
+  border: 0; background: transparent; border-radius: 999px; padding: 0.4rem 1rem; font-size: 0.875rem; color: #4d5665; min-height: 36px;
+}
+.segmented button[aria-pressed="true"] { background: #202632; color: #fff; }
+.dataset-grid { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr); gap: 1.4rem; align-items: start; }
+.graph-wrap { padding: 0.6rem; overflow: hidden; }
+#graph { width: 100%; height: auto; display: block; touch-action: manipulation; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; padding: 0.7rem 0.9rem 0.5rem; border-top: 1px solid #e0e4eb; font-size: 0.8125rem; color: #414a59; }
+.legend span { display: inline-flex; align-items: center; gap: 0.45rem; }
+.legend svg { flex: none; }
+.empty { padding: 3rem 1.5rem; text-align: center; }
+.empty p { color: var(--muted); max-width: 30rem; margin: 0.8rem auto 1.4rem; }
+.empty .actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+/* graph marks */
+.edge { stroke: #9aa2b1; stroke-width: 1.3; fill: none; transition: opacity 0.2s; }
+.edge.out { stroke-dasharray: 4 5; stroke: #a9b0bd; }
+.node { cursor: pointer; transition: opacity 0.2s; }
+.node:focus { outline: none; }
+.node .ring { fill: none; stroke: transparent; stroke-width: 3; }
+.node:focus-visible .ring, .node.is-selected .ring { stroke: var(--violet); }
+.node-rule .mark { stroke: #202632; stroke-width: 2; }
+.node-rule.checked .mark { fill: #202632; }
+.node-rule.found .mark { fill: #fafbfd; }
+.node-case .mark { fill: var(--violet); stroke: #fff; stroke-width: 2; }
+.label { font-family: var(--font); pointer-events: none; paint-order: stroke; stroke: #fafbfd; stroke-width: 4px; stroke-linejoin: round; transition: opacity 0.15s; }
+.label-case { font-size: 16px; font-weight: 600; fill: #202632; }
+.label-rule { font-size: 13.5px; fill: #333c4a; opacity: 0; }
+.label-rule.show, .label-rule.is-on { opacity: 1; }
+#graph.has-focus .node:not(.is-on), #graph.has-focus .edge:not(.is-on), #graph.has-focus .label-case:not(.is-on) { opacity: 0.28; }
+#graph.has-focus .label-rule.show:not(.is-on) { opacity: 0.22; }
+#graph.has-focus .edge.is-on { stroke: #4b5363; stroke-width: 1.8; }
+
+/* detail */
+.detail { padding: 1.4rem 1.4rem 1.5rem; position: sticky; top: 132px; max-height: calc(100vh - 150px); overflow: auto; }
+.detail h3 { margin-bottom: 0.7rem; }
+.detail .kv { font-size: 0.9063rem; color: #3b4452; margin-top: 0.25rem; }
+.detail .kv b { font-weight: 600; color: var(--ink); }
+.detail h4 { font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase; color: #616979; font-weight: 600; margin: 1.3rem 0 0.5rem; }
+.case-line { border-top: 1px solid #e0e4eb; padding: 0.8rem 0; }
+.case-line:last-child { padding-bottom: 0; }
+.case-line .head { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; align-items: center; }
+.case-line .head button { font-weight: 600; font-size: 0.9375rem; }
+.case-line p { font-size: 0.8438rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.5; }
+.case-line ul, .rule-items { list-style: none; margin: 0.45rem 0 0; padding: 0; }
+.case-line li { font-size: 0.8438rem; line-height: 1.5; margin-top: 0.2rem; }
+.src a { color: #3c4c74; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.src a:hover { color: var(--violet); }
+.src small { color: #616979; }
+.rule-items li { border-top: 1px solid #e0e4eb; padding: 0.55rem 0; display: flex; gap: 0.6rem; align-items: baseline; justify-content: space-between; }
+.rule-items li button { text-align: left; font-size: 0.9063rem; font-weight: 500; border-bottom-color: transparent; }
+.rule-items li button:hover { border-bottom-color: var(--violet); }
+.linkish { border: 0; background: none; padding: 0; text-align: left; border-bottom: 1px solid #b9bfcb; }
+.linkish:hover { color: var(--violet); border-color: var(--violet); }
+
+/* list view */
+.list-view h3 { margin: 0.4rem 0 0.8rem; }
+.case-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.8rem; margin-bottom: 1.8rem; }
+.case-card { border: 1px solid #c2cad7; border-radius: 14px; padding: 1rem; background: #f8f9fc; }
+.case-card button { font-weight: 600; font-size: 1rem; }
+.case-card p { font-size: 0.8438rem; color: var(--muted); margin-top: 0.4rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9063rem; }
+th { text-align: left; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: #616979; font-weight: 600; padding: 0.5rem 0.8rem 0.5rem 0; border-bottom: 1px solid #c3cad4; }
+td { padding: 0.65rem 0.8rem 0.65rem 0; border-bottom: 1px solid #e0e4eb; vertical-align: top; }
+td .linkish { font-weight: 500; }
+
+/* ---------- run tab ---------- */
+.run-grid { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 1.6rem; align-items: start; }
+.config { padding: 1.4rem; }
+.config h3 { margin-bottom: 1rem; }
+.form-row { display: grid; gap: 0.35rem; margin-bottom: 0.9rem; }
+.form-row label, .form-row .label { font-size: 0.875rem; font-weight: 500; }
+.form-row select, .field {
+  width: 100%; min-height: 46px; padding: 0.65rem 0.9rem; border: 1px solid #8793a6; background: #ffffffc9; border-radius: 8px; color: var(--ink); line-height: 1.4;
+}
+.field { background: #f1f3f7; border-color: #c3cad4; color: #2c3340; }
+.config .button { width: 100%; margin-top: 0.4rem; }
+.run-side { display: grid; gap: 1rem; align-content: start; align-self: stretch; }
+.run-side.stick-all { align-self: start; position: sticky; top: var(--stick-top, 120px); }
+.side-follow { display: grid; gap: 1rem; }
+.side-follow.stick { position: sticky; top: var(--stick-top, 120px); }
+.order-box { padding: 1.1rem 1.4rem 1.2rem; }
+
+/* "Dataset so far": a small live view of the dataset beside the run */
+.mini { padding: 1.1rem 1.1rem 1rem; }
+.mini h3 { font-size: 1.05rem; margin: 0 0.3rem 0.7rem; }
+.mini-open {
+  display: block; width: 100%; padding: 0.35rem 0.35rem 0.55rem; text-align: left;
+  border: 1px solid #d3d8e1; border-radius: 12px; background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.mini-open:hover { border-color: var(--violet); box-shadow: 0 6px 18px #48577918; }
+#mini-graph { display: block; width: 100%; height: 180px; }
+.mini-empty { display: block; padding: 2.4rem 1rem; text-align: center; color: var(--muted); font-size: 0.9063rem; }
+.mini-link {
+  display: inline-flex; align-items: center; gap: 0.5rem; margin: 0.2rem 0.45rem 0;
+  font-size: 0.875rem; font-weight: 600; border-bottom: 1px solid #9ca3b2; padding-bottom: 0.15rem;
+}
+.mini-open:hover .mini-link { color: var(--violet); border-color: var(--violet); }
+.mini-count { font-size: 1.0625rem; font-weight: 500; letter-spacing: -0.01em; margin: 0.75rem 0.3rem 0; }
+.mini-count.tick { animation: mini-tick 0.9s ease-out; }
+@keyframes mini-tick { 0% { color: var(--violet); } 100% { color: inherit; } }
+.mini-note { font-size: 0.8438rem; color: #3f3d70; margin: 0.2rem 0.3rem 0; min-height: 1.35em; line-height: 1.35; }
+.m-edge, .m-node .shape, .m-node .halo { vector-effect: non-scaling-stroke; }
+.m-edge { stroke: #a6adba; stroke-width: 0.9px; fill: none; }
+.m-edge.out { stroke-dasharray: 3 3; }
+.m-rule .shape { stroke: #202632; stroke-width: 1.5px; }
+.m-rule.checked .shape { fill: #202632; }
+.m-rule.found .shape { fill: #fff; }
+.m-case .shape { fill: var(--violet); stroke: #fff; stroke-width: 1.5px; }
+.m-node .halo { fill: none; stroke: var(--violet); stroke-width: 1.8px; opacity: 0; }
+.mini-quiet .m-node.is-new .shape, .mini-quiet .m-node.is-new .halo { animation: none; }
+.m-node.lit .halo, .m-node.is-new .halo { opacity: 1; }
+.m-node.is-new .shape { transform-box: fill-box; transform-origin: center; animation: mini-pop 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.m-node.is-new .halo { animation: mini-glow 1.8s ease-out both; }
+@keyframes mini-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes mini-glow { 0% { opacity: 0; stroke-width: 7px; } 35% { opacity: 0.85; } 100% { opacity: 1; stroke-width: 1.8px; } }
+.order { margin: 0.5rem 0 0; padding-left: 1.2rem; font-size: 0.8438rem; color: var(--muted); }
+.order li.done { color: #8a92a0; text-decoration: line-through; }
+.run-main { min-height: 22rem; }
+.run-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.6rem 1.2rem; margin-bottom: 0.4rem; }
+.run-intro { color: var(--muted); max-width: 44rem; margin-bottom: 1.2rem; }
+.so-far { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; font-size: 0.875rem; color: var(--muted); margin-bottom: 1.2rem; }
+.progress { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.9rem; min-height: 1.5em; scroll-margin-top: 150px; }
+.step {
+  border: 1px solid #c2cad7; border-radius: 14px; background: #f8f9fc; padding: 1.1rem 1.25rem; margin-bottom: 0.9rem;
+  animation: rise 0.35s ease both;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.step .num { display: block; font-size: 0.8125rem; color: var(--violet); margin-bottom: 0.3rem; }
+.step h3 { font-size: 1.15rem; }
+.step p { margin-top: 0.55rem; color: #3b4452; font-size: 0.9375rem; max-width: 46rem; }
+.step .prov { font-size: 0.7813rem; color: #616979; margin-top: 0.75rem; }
+.step .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.6rem; }
+.step.done { background: linear-gradient(125deg, #dfe8f0, #f7f4f8 40%, #e8e3f3 70%, #dde6f0); border-color: #bdc6d5; }
+.result-list { list-style: none; margin: 0.7rem 0 0; padding: 0; }
+.result-list li { border-top: 1px solid #dfe3ea; padding: 0.65rem 0; }
+.result-list .name { font-weight: 500; font-size: 0.9375rem; }
+.result-list .meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; margin-top: 0.35rem; align-items: center; font-size: 0.8125rem; }
+.figures { display: flex; flex-wrap: wrap; gap: 0.6rem 2rem; margin-top: 0.8rem; }
+.figures div strong { font-size: 1.7rem; font-weight: 500; letter-spacing: -0.05em; display: block; line-height: 1.1; }
+.figures div span { font-size: 0.8125rem; color: var(--muted); }
+.step .button { margin-top: 1rem; }
+.idle { padding: 2.2rem 1.5rem; color: var(--muted); border: 1px dashed #b6c0cd; border-radius: 14px; }
+
+/* ---------- footer ---------- */
+.site-footer { padding: 2.4rem 0 1.5rem; border-top: 1px solid var(--line); }
+.footer-top { display: flex; justify-content: space-between; gap: 2rem; margin-bottom: 1.6rem; flex-wrap: wrap; }
+.footer-top nav { display: flex; gap: 1.6rem; font-size: 0.9375rem; align-items: start; }
+.footer-top nav a { text-decoration: none; }
+.footer-top nav a:hover { color: var(--violet); }
+.footer-notice { font-size: 0.8125rem; line-height: 1.6; color: #565e6b; max-width: 60rem; }
+.footer-notice strong { font-weight: 600; }
+.footer-bottom { border-top: 1px solid #d7dbe3; margin-top: 1.3rem; padding-top: 1.1rem; font-size: 0.75rem; color: #5d6675; }
+
+@media (min-width: 981px) {
+  .config { padding: 1rem 1.25rem; }
+  .config h3 { margin-bottom: 0.6rem; }
+  .config .form-row { margin-bottom: 0.4rem; gap: 0.15rem; }
+  .config .form-row label, .config .form-row .label { font-size: 0.8125rem; }
+  .config .form-row select { min-height: 40px; padding: 0.45rem 0.8rem; }
+  .config .form-row.ro .field { min-height: 34px; padding: 0.35rem 0.7rem; font-size: 0.9063rem; }
+  .config .micro { margin-top: 0.6rem !important; font-size: 0.8125rem; }
+  .mini { padding: 0.75rem 0.9rem 0.65rem; }
+  .mini h3 { margin-bottom: 0.4rem; }
+  .mini-count { margin-top: 0.45rem; }
+  #mini-graph { height: 128px; }
+}
+@media (min-width: 981px) and (max-height: 700px) {
+  #mini-graph { height: 106px; }
+}
+@media (max-width: 980px) {
+  .dataset-grid, .run-grid { grid-template-columns: 1fr; }
+  .run-side.stick-all, .side-follow.stick { position: static; }
+  .detail { position: static; max-height: none; }
+}
+@media (max-width: 640px) {
+  .shell { width: calc(100% - 2.2rem); }
+  .nav-shell { min-height: 58px; }
+  .wordmark { font-size: 1.45rem; }
+  .wordmark .product { font-size: 0.95rem; margin-left: 0.5rem; padding-left: 0.5rem; }
+  .top nav { gap: 1rem; font-size: 0.875rem; }
+  .status-line { font-size: 0.75rem; }
+  .status-line .shell { display: block; }
+  .status-line .tag { display: inline-block; margin-right: 0.4rem; }
+  .intro-art { opacity: 0.4; object-position: 78% center; }
+  .intro-content { padding-block: 2.2rem 2.4rem; }
+  .tabs { gap: 1.3rem; }
+  .tabs button { font-size: 1rem; }
+  .counts { grid-template-columns: repeat(2, 1fr); }
+  .count strong { font-size: 2rem; }
+  table, tbody, tr, td { display: block; width: 100%; }
+  thead { display: none; }
+  tr { border-bottom: 1px solid #d5dae3; padding: 0.7rem 0; }
+  td { border: 0; padding: 0.15rem 0; }
+  td[data-label]:before { content: attr(data-label) ": "; color: #616979; font-size: 0.8125rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *:before, *:after { animation: none !important; transition: none !important; }
+  .button:hover { transform: none; }
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="top">
+  <header class="shell nav-shell">
+    <a class="wordmark" href="#top" aria-label="Noacue Rulemap, top of page">
+      <img src="assets/noacue-mark.png" alt="" width="36" height="36">
+      Noacue<span class="dot" aria-hidden="true">.</span>
+      <span class="product">Rulemap</span>
+    </a>
+    <nav aria-label="Project links">
+      <a href="https://github.com/yeyfreya/noacue-rulemap" id="link-code">Code</a>
+    </nav>
+  </header>
+  <div class="status-line" role="note">
+    <div class="shell">
+      <span class="tag">Sample data</span>
+      <span>The cases on this page were run for real, and the page replays their saved results. Joining the steps into one live run is the work ahead.</span>
+    </div>
+  </div>
+</div>
+
+<section class="intro" id="top">
+  <img class="intro-art" src="assets/liquid-silver.jpg" alt="">
+  <div class="shell intro-content">
+    <p class="eyebrow">✦ &nbsp; Sample demo</p>
+    <h1>Noacue Rulemap</h1>
+    <p class="lead">An open, checked map of the rules AI products face. For small teams with no legal budget.</p>
+  </div>
+</section>
+
+<main id="main">
+  <div class="shell">
+    <div class="tabs" role="tablist" aria-label="Demo sections">
+      <button role="tab" id="tab-run" aria-controls="panel-run" aria-selected="true">Run a use case</button>
+      <button role="tab" id="tab-dataset" aria-controls="panel-dataset" aria-selected="false" tabindex="-1">Rulemap dataset</button>
+    </div>
+
+    <!-- ===================== DATASET TAB (shown second) ===================== -->
+    <section role="tabpanel" id="panel-dataset" aria-labelledby="tab-dataset" tabindex="0" hidden>
+      <div class="counts" id="counts" aria-live="polite"></div>
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="View">
+          <button type="button" id="view-graph" aria-pressed="true">Graph</button>
+          <button type="button" id="view-list" aria-pressed="false">List</button>
+        </div>
+        <p class="micro" id="dataset-hint"></p>
+        <span class="spacer"></span>
+        <button type="button" class="button button-small" id="go-run">Run another case</button>
+        <button type="button" class="button button-light button-small" id="add-all">Add all sample cases</button>
+        <button type="button" class="text-button" id="reset-1">Start over</button>
+      </div>
+
+      <div class="dataset-grid">
+        <div>
+          <div class="panel graph-wrap" id="graph-panel">
+            <svg id="graph" viewBox="0 0 1000 700" role="group" aria-label="Graph of cases and rules. Each dot can be selected. The List view shows the same data as text."></svg>
+            <div class="legend" aria-hidden="true">
+              <span><span class="sq"></span> Case</span>
+              <span><span class="dot dot-checked"></span> Rule, checked by a person</span>
+              <span><span class="dot dot-found"></span> Rule, found, not yet checked</span>
+              <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="#7d8594" stroke-width="1.6"/></svg> Worth a look</span>
+              <span><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke="#7d8594" stroke-width="1.6" stroke-dasharray="4 5"/></svg> Looked at, ruled out</span>
+            </div>
+          </div>
+          <div class="panel list-view" id="list-panel" hidden style="padding:1.4rem"></div>
+          <p class="micro" style="margin-top:0.9rem">A bigger dot is a rule shared by more cases. Matching the same rule across cases was done by hand and is a first draft.</p>
+        </div>
+        <aside class="panel detail" id="detail" aria-live="polite" aria-label="Details"></aside>
+      </div>
+    </section>
+
+    <!-- ===================== RUN TAB (shown first, the default) ===================== -->
+    <section role="tabpanel" id="panel-run" aria-labelledby="tab-run" tabindex="0">
+      <div class="run-grid">
+        <div class="run-side" id="run-side">
+        <div class="panel config" id="config-box">
+          <h3>Configuration</h3>
+          <div class="form-row">
+            <label for="case-select">Saved case</label>
+            <select id="case-select"></select>
+          </div>
+          <div class="form-row ro"><span class="label">Use case</span><div class="field" id="f-usecase"></div></div>
+          <div class="form-row ro"><span class="label">Technology</span><div class="field" id="f-tech"></div></div>
+          <div class="form-row ro"><span class="label">Industry</span><div class="field" id="f-industry"></div></div>
+          <button type="button" class="button" id="run-btn">
+            <span id="run-label">Run analysis</span>
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+          </button>
+          <p class="micro" style="margin-top:0.8rem">These are saved inputs. The page replays the saved run for the case you pick. It does not take new input.</p>
+        </div>
+        <div class="side-follow" id="side-follow">
+          <section class="panel mini" aria-labelledby="mini-title">
+            <h3 id="mini-title">Dataset so far</h3>
+            <button type="button" class="mini-open" id="mini-open">
+              <svg id="mini-graph" viewBox="0 0 1000 700" aria-hidden="true" focusable="false"></svg>
+              <span class="mini-empty" id="mini-empty" hidden>Empty. Run a case to add its rules.</span>
+              <span class="mini-link">Open the full dataset
+                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+              </span>
+            </button>
+            <p class="mini-count" id="mini-count" aria-hidden="true"></p>
+            <p class="mini-note" id="mini-note" aria-hidden="true"></p>
+            <p class="sr-only" id="mini-live" role="status" aria-live="polite"></p>
+          </section>
+          <div class="panel order-box">
+            <p class="micro"><strong style="color:var(--ink);font-weight:600">Suggested order.</strong> Any order works. The counts are computed from the cases you have added.</p>
+            <ol class="order" id="order"></ol>
+          </div>
+        </div>
+        </div>
+
+        <div class="run-main">
+          <div class="run-head">
+            <h2>Run a use case</h2>
+            <button type="button" class="text-button" id="reset-2">Start over with an empty dataset</button>
+          </div>
+          <p class="run-intro">A team describes its AI use case. The dataset is checked first. Research then looks for what is new. The rules that come back are added to the dataset for the next team.</p>
+          <div class="so-far" id="so-far"></div>
+          <p class="progress" id="progress" role="status" aria-live="polite"></p>
+          <div id="steps" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-top">
+      <a class="wordmark" href="#top" aria-label="Noacue Rulemap, top of page">
+        <img src="assets/noacue-mark.png" alt="" width="36" height="36">
+        Noacue<span class="dot" aria-hidden="true">.</span>
+        <span class="product">Rulemap</span>
+      </a>
+      <nav aria-label="Footer links">
+        <a href="https://github.com/yeyfreya/noacue-rulemap">Code repository</a>
+      </nav>
+    </div>
+    <p class="footer-notice">
+      <strong>About this page.</strong> This is sample data. The page replays saved results from real runs. It is not legal advice, and it does not confirm that any product meets any rule. Rules marked "found, not yet checked" have not been checked by a person. Rules change often, so a checked rule shows the date it was checked. Matching the same rule across cases is a first draft. For decisions about your own product, read the source and talk to a qualified professional.
+    </p>
+    <div class="footer-bottom">© 2026 Noacue</div>
+  </div>
+</footer>
+
+<script src="rulemap-data.js"></script>
+<script>
+(function () {
+  "use strict";
+  var D = window.RULEMAP_DATA;
+  if (!D) { document.getElementById("main").textContent = "The sample data file did not load."; return; }
+
+  /* ------------------------------------------------------------ */
+  /* Data helpers                                                  */
+  /* ------------------------------------------------------------ */
+  var ruleById = {}, caseById = {};
+  D.rules.forEach(function (r) { ruleById[r.id] = r; });
+  D.cases.forEach(function (c) {
+    caseById[c.id] = c;
+    c.rules.forEach(function (e) {
+      if (!e.status) {
+        e.status = (e.parts || []).some(function (p) { return p.status === "worth"; }) ? "worth" : "ruled_out";
+      }
+    });
+  });
+  var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  function fmtDate(iso) {
+    var p = iso.split("-");
+    return parseInt(p[2], 10) + " " + MONTHS[parseInt(p[1], 10) - 1] + " " + p[0];
+  }
+  function statusText(s) { return s === "worth" ? "Worth a look" : "Looked at, ruled out"; }
+  function edgeOf(caseId, ruleId) {
+    return caseById[caseId].rules.filter(function (e) { return e.rule === ruleId; })[0];
+  }
+  /* Everything about the dataset is computed from the list of added cases. */
+  function summarize(added) {
+    var rules = {}, order = [];
+    added.forEach(function (cid) {
+      var c = caseById[cid];
+      c.rules.forEach(function (e) {
+        if (!rules[e.rule]) { rules[e.rule] = { id: e.rule, cases: [], checkedIn: [] }; order.push(e.rule); }
+        rules[e.rule].cases.push(cid);
+        if (c.checkedOn) rules[e.rule].checkedIn.push(cid);
+      });
+    });
+    var list = order.map(function (id) { return rules[id]; });
+    return {
+      rules: rules,
+      list: list,
+      nRules: list.length,
+      nChecked: list.filter(function (r) { return r.checkedIn.length > 0; }).length,
+      nShared: list.filter(function (r) { return r.cases.length > 1; }).length
+    };
+  }
+
+  /* ------------------------------------------------------------ */
+  /* State                                                         */
+  /* ------------------------------------------------------------ */
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var state = {
+    added: ["learning"],          /* the sample starts with one checked case */
+    selected: null,               /* { type: "rule" | "case", id } */
+    view: window.innerWidth < 700 ? "list" : "graph",
+    running: false,
+    runCase: null,
+    lastRun: null                 /* the case most recently run in this visit */
+  };
+  var datasetDirty = false;       /* true when a run added a case and the graph has not been redrawn yet */
+  var pos = {};                   /* node positions, kept between renders */
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, attrs, children) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "class") n.className = attrs[k];
+      else if (k === "text") n.textContent = attrs[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (ch) {
+      if (ch == null) return;
+      n.appendChild(typeof ch === "string" ? document.createTextNode(ch) : ch);
+    });
+    return n;
+  }
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function sv(tag, attrs) {
+    var n = document.createElementNS(SVGNS, tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+    return n;
+  }
+  function chipChecked(isChecked, text) {
+    return el("span", { class: "chip " + (isChecked ? "chip-checked" : "chip-found"), text: text || (isChecked ? "Checked by a person" : "Found, not yet checked") });
+  }
+  function chipStatus(status) {
+    return el("span", { class: "chip" + (status === "worth" ? "" : " chip-out"), text: statusText(status) });
+  }
+  function checkedLabel(r) {
+    if (!r.checkedIn.length) return "Found, not yet checked";
+    if (r.cases.length === 1) return "Checked by a person";
+    return "Checked by a person in " + r.checkedIn.length + " of " + r.cases.length + " cases";
+  }
+  function sourceItems(e) {
+    var items = (e.sources || []).map(function (s) {
+      return el("li", { class: "src" }, [
+        el("a", { href: s.url, target: "_blank", rel: "noopener noreferrer", text: s.title }),
+        s.note ? el("small", { text: " (" + s.note + ")" }) : null
+      ]);
+    });
+    if (!items.length) {
+      items.push(el("li", { class: "src" }, [el("small", { text: e.sourceGap || "No source page was saved for this rule in this case." })]));
+    }
+    return items;
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Tabs                                                          */
+  /* ------------------------------------------------------------ */
+  var tabs = [$("tab-run"), $("tab-dataset")];
+  function showTab(name, focus) {
+    tabs.forEach(function (t) {
+      var on = t.id === "tab-" + name;
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      $(t.getAttribute("aria-controls")).hidden = !on;
+      if (on && focus) t.focus();
+    });
+    /* after a run, the graph is redrawn when the dataset tab opens, so the growth is seen */
+    if (name === "dataset" && datasetDirty) renderDatasetBody();
+    if (name === "run") { renderMini(true); fitSide(); }
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { showTab(t.id.replace("tab-", "")); });
+    t.addEventListener("keydown", function (ev) {
+      if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") {
+        var next = tabs[(i + (ev.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+        showTab(next.id.replace("tab-", ""), true);
+        ev.preventDefault();
+      }
+    });
+  });
+
+  /* ------------------------------------------------------------ */
+  /* Counts, toolbar                                               */
+  /* ------------------------------------------------------------ */
+  function renderCounts() {
+    var s = summarize(state.added);
+    var box = $("counts");
+    box.textContent = "";
+    [[state.added.length, state.added.length === 1 ? "case" : "cases"],
+     [s.nRules, "rules in the dataset"],
+     [s.nChecked, "checked by a person"],
+     [s.nShared, "shared by two or more cases"]].forEach(function (c) {
+      box.appendChild(el("div", { class: "count" }, [el("strong", { text: String(c[0]) }), el("span", { text: c[1] })]));
+    });
+    var left = D.cases.length - state.added.length;
+    $("go-run").textContent = state.added.length === 0 ? "Run the first case" : (left === 0 ? "Run a use case" : "Run another case");
+    $("add-all").hidden = left === 0;
+    $("add-all").textContent = state.added.length === 0 ? "Add all " + D.cases.length + " sample cases" : "Add the other " + left + (left === 1 ? " case" : " cases");
+    $("dataset-hint").textContent = left === 0
+      ? "All " + D.cases.length + " sample cases are in the dataset."
+      : left + (left === 1 ? " more case" : " more cases") + " to add. Run them one by one under \"Run a use case\" to see the dataset grow.";
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Graph layout: plain force layout, written here, no outside code */
+  /* ------------------------------------------------------------ */
+  var W = 1000, H = 700;
+  function hash(str) {
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return ((h >>> 0) % 10000) / 10000;
+  }
+  function layout(added, summary, prev) {
+    var P = {}, cx = W / 2, cy = H / 2 - 6;
+    var n = added.length;
+    var rx = n < 2 ? 0 : n === 2 ? 245 : 335, ry = n < 2 ? 0 : n === 2 ? 0 : 218;
+    added.forEach(function (cid, i) {
+      var a = -Math.PI / 2 + (i / Math.max(n, 1)) * 2 * Math.PI;
+      if (n === 2) a = i === 0 ? Math.PI : 0;
+      P["c:" + cid] = { x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry, fixed: true };
+    });
+    summary.list.forEach(function (r) {
+      var key = "r:" + r.id, ax = 0, ay = 0;
+      r.cases.forEach(function (cid) { ax += P["c:" + cid].x; ay += P["c:" + cid].y; });
+      ax /= r.cases.length; ay /= r.cases.length;
+      var ang = hash(r.id) * 2 * Math.PI, rad = 60 + hash(r.id + "x") * 50;
+      var start = prev[key] ? { x: prev[key].x, y: prev[key].y } : { x: ax + Math.cos(ang) * rad, y: ay + Math.sin(ang) * rad };
+      P[key] = { x: start.x, y: start.y, deg: r.cases.length, cases: r.cases };
+    });
+    var keys = Object.keys(P), ruleKeys = keys.filter(function (k) { return k[0] === "r"; });
+    var ITER = 420;
+    for (var it = 0; it < ITER; it++) {
+      var alpha = 0.9 * (1 - it / ITER) + 0.02;
+      var F = {};
+      ruleKeys.forEach(function (k) { F[k] = { x: 0, y: 0 }; });
+      /* repulsion */
+      for (var i = 0; i < ruleKeys.length; i++) {
+        var a = P[ruleKeys[i]];
+        for (var j = 0; j < keys.length; j++) {
+          var kb = keys[j];
+          if (kb === ruleKeys[i]) continue;
+          var b = P[kb];
+          var dx = a.x - b.x, dy = a.y - b.y;
+          var d2 = dx * dx + dy * dy;
+          if (d2 < 1) { dx = hash(ruleKeys[i] + kb) - 0.5; dy = hash(kb + ruleKeys[i]) - 0.5; d2 = 1; }
+          var charge = b.fixed ? 5600 : 2700;
+          var f = charge / d2;
+          var d = Math.sqrt(d2);
+          F[ruleKeys[i]].x += (dx / d) * f;
+          F[ruleKeys[i]].y += (dy / d) * f;
+        }
+      }
+      /* springs to linked cases, and a gentle push outward for single-case rules */
+      ruleKeys.forEach(function (k) {
+        var r = P[k];
+        var rest = r.deg === 1 ? (n === 1 ? 170 : n === 2 ? 118 : 84) : 70;
+        var kS = r.deg === 1 ? 0.09 : 0.05;
+        r.cases.forEach(function (cid) {
+          var c = P["c:" + cid];
+          var dx = c.x - r.x, dy = c.y - r.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+          var f = (d - rest) * kS;
+          F[k].x += (dx / d) * f;
+          F[k].y += (dy / d) * f;
+        });
+        if (r.deg === 1 && n > 1) {
+          var c1 = P["c:" + r.cases[0]];
+          var ox = c1.x - cx, oy = c1.y - cy, od = Math.sqrt(ox * ox + oy * oy) || 1;
+          F[k].x += (ox / od) * 0.9;
+          F[k].y += (oy / od) * 0.9;
+        }
+      });
+      ruleKeys.forEach(function (k) {
+        var r = P[k];
+        var fx = Math.max(-18, Math.min(18, F[k].x)), fy = Math.max(-18, Math.min(18, F[k].y));
+        r.x = Math.max(60, Math.min(W - 60, r.x + fx * alpha));
+        r.y = Math.max(40, Math.min(H - 50, r.y + fy * alpha));
+      });
+    }
+    return P;
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Graph rendering                                               */
+  /* ------------------------------------------------------------ */
+  var graph = $("graph");
+  var nodeEls = {}, labelEls = {}, labelOff = {}, edgeEls = [], hoverKey = null, animId = 0;
+
+  /* Label placement: try a few spots around the dot and keep the one that overlaps least. */
+  function placeLabels(target, summary, showKeys) {
+    var obstacles = [], off = {};
+    function overlap(a, b) {
+      var w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1), h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+      return w > 0 && h > 0 ? w * h : 0;
+    }
+    function box(x, y, anchor, w) {
+      var x1 = anchor === "middle" ? x - w / 2 : anchor === "start" ? x : x - w;
+      return { x1: x1, y1: y - 13, x2: x1 + w, y2: y + 5 };
+    }
+    var radiusOf = {};
+    summary.list.forEach(function (r) { radiusOf["r:" + r.id] = Math.min(16, 7 + 2.3 * (r.cases.length - 1)); });
+    Object.keys(target).forEach(function (k) {
+      var R = k[0] === "c" ? 16 : radiusOf[k], p = target[k];
+      obstacles.push({ key: k, x1: p.x - R, y1: p.y - R, x2: p.x + R, y2: p.y + R });
+    });
+    Object.keys(target).forEach(function (k) {
+      if (k[0] !== "c") return;
+      var label = caseById[k.slice(2)].label, w = label.length * 8.7 + 6, p = target[k];
+      off[k] = { dx: 0, dy: 37, anchor: "middle" };
+      var b = box(p.x, p.y + 37, "middle", w); b.key = k;
+      obstacles.push(b);
+    });
+    function choose(k, keep) {
+      var p = target[k], R = radiusOf[k], r = summary.rules[k.slice(2)];
+      var w = ruleById[k.slice(2)].short.length * 7.2 + 6;
+      var spots = {
+        below: { dx: 0, dy: R + 17, anchor: "middle" },
+        above: { dx: 0, dy: -(R + 8), anchor: "middle" },
+        right: { dx: R + 7, dy: 5, anchor: "start" },
+        left: { dx: -(R + 7), dy: 5, anchor: "end" }
+      };
+      var order = ["below", "above", "right", "left"];
+      if (r.cases.length === 1) {
+        var home = target["c:" + r.cases[0]];
+        var ang = Math.atan2(p.y - home.y, p.x - home.x), co = Math.cos(ang), si = Math.sin(ang);
+        if (Math.abs(co) < 0.35) order = si > 0 ? ["below", "right", "left", "above"] : ["above", "right", "left", "below"];
+        else order = co > 0 ? ["right", "below", "above", "left"] : ["left", "below", "above", "right"];
+      }
+      var best = null, bestScore = Infinity, bestBox = null;
+      order.forEach(function (name, idx) {
+        var s = spots[name], b = box(p.x + s.dx, p.y + s.dy, s.anchor, w), score = idx * 0.5;
+        if (b.x1 < 6 || b.x2 > W - 6 || b.y1 < 4 || b.y2 > H - 4) score += 4000;
+        obstacles.forEach(function (o) { if (o.key !== k) score += overlap(b, o); });
+        if (score < bestScore) { bestScore = score; best = s; bestBox = b; }
+      });
+      off[k] = best;
+      if (keep) { bestBox.key = k; obstacles.push(bestBox); }
+    }
+    var ruleKeys = summary.list.slice().sort(function (a, b) { return b.cases.length - a.cases.length; }).map(function (r) { return "r:" + r.id; });
+    ruleKeys.filter(function (k) { return showKeys[k]; }).forEach(function (k) { choose(k, true); });
+    ruleKeys.filter(function (k) { return !showKeys[k]; }).forEach(function (k) { choose(k, false); });
+    return off;
+  }
+
+  function neighbours(key) {
+    var set = {}; set[key] = true;
+    edgeEls.forEach(function (e) {
+      if (e.a === key) set[e.b] = true;
+      if (e.b === key) set[e.a] = true;
+    });
+    return set;
+  }
+  function applyHighlight() {
+    var key = hoverKey || (state.selected ? (state.selected.type === "rule" ? "r:" : "c:") + state.selected.id : null);
+    var selKey = state.selected ? (state.selected.type === "rule" ? "r:" : "c:") + state.selected.id : null;
+    if (key && !nodeEls[key]) key = null;
+    graph.classList.toggle("has-focus", !!key);
+    var on = key ? neighbours(key) : {};
+    Object.keys(nodeEls).forEach(function (k) {
+      nodeEls[k].classList.toggle("is-on", !!on[k]);
+      nodeEls[k].classList.toggle("is-selected", k === selKey);
+      labelEls[k].classList.toggle("is-on", !!on[k]);
+    });
+    edgeEls.forEach(function (e) { e.line.classList.toggle("is-on", !!key && (e.a === key || e.b === key)); });
+  }
+  function place(P) {
+    Object.keys(nodeEls).forEach(function (k) {
+      nodeEls[k].setAttribute("transform", "translate(" + P[k].x.toFixed(1) + "," + P[k].y.toFixed(1) + ")");
+      labelEls[k].setAttribute("x", (P[k].x + labelOff[k].dx).toFixed(1));
+      labelEls[k].setAttribute("y", (P[k].y + labelOff[k].dy).toFixed(1));
+    });
+    edgeEls.forEach(function (e) {
+      e.line.setAttribute("x1", P[e.a].x.toFixed(1)); e.line.setAttribute("y1", P[e.a].y.toFixed(1));
+      e.line.setAttribute("x2", P[e.b].x.toFixed(1)); e.line.setAttribute("y2", P[e.b].y.toFixed(1));
+    });
+  }
+  function clearSelection() {
+    if (!state.selected) return;
+    state.selected = null;
+    renderDetail();
+    applyHighlight();
+  }
+  function select(type, id, fromRun) {
+    /* clicking the selected dot again shows the whole graph */
+    if (!fromRun && state.selected && state.selected.type === type && state.selected.id === id) { clearSelection(); return; }
+    state.selected = { type: type, id: id };
+    renderDetail();
+    applyHighlight();
+    if (fromRun) $("detail").scrollTop = 0;
+  }
+  function makeNode(key, label, aria, isCase, extraClass) {
+    var g = sv("g", { class: "node " + (isCase ? "node-case" : "node-rule") + (extraClass ? " " + extraClass : ""), tabindex: "0", role: "button", "aria-label": aria });
+    g.addEventListener("click", function () { select(isCase ? "case" : "rule", key.slice(2)); });
+    g.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(isCase ? "case" : "rule", key.slice(2)); }
+    });
+    g.addEventListener("pointerenter", function () { hoverKey = key; applyHighlight(); });
+    g.addEventListener("pointerleave", function () { hoverKey = null; applyHighlight(); });
+    g.addEventListener("focus", function () { hoverKey = key; applyHighlight(); });
+    g.addEventListener("blur", function () { hoverKey = null; applyHighlight(); });
+    return g;
+  }
+  function renderGraph() {
+    var summary = summarize(state.added);
+    var target = layout(state.added, summary, pos);
+    var from = {};
+    Object.keys(target).forEach(function (k) {
+      if (pos[k]) from[k] = { x: pos[k].x, y: pos[k].y };
+      else if (k[0] === "r") {
+        /* a new rule grows out of the newest case that names it */
+        var cs = target[k].cases, c = target["c:" + cs[cs.length - 1]];
+        from[k] = { x: c.x, y: c.y };
+      } else from[k] = { x: target[k].x, y: target[k].y };
+    });
+
+    graph.textContent = "";
+    nodeEls = {}; labelEls = {}; edgeEls = [];
+    var gEdges = sv("g", {}), gNodes = sv("g", {}), gLabels = sv("g", { "aria-hidden": "true" });
+    graph.appendChild(gEdges); graph.appendChild(gNodes); graph.appendChild(gLabels);
+    /* with few rules every label fits; with many, only the most shared rules keep a label */
+    var showKeys = {};
+    summary.list.forEach(function (r) { if (summary.nRules <= 20 || r.cases.length >= 3) showKeys["r:" + r.id] = true; });
+    labelOff = placeLabels(target, summary, showKeys);
+
+    state.added.forEach(function (cid) {
+      var c = caseById[cid];
+      c.rules.forEach(function (e) {
+        var line = sv("line", { class: "edge" + (e.status === "worth" ? "" : " out") });
+        gEdges.appendChild(line);
+        edgeEls.push({ a: "c:" + cid, b: "r:" + e.rule, line: line });
+      });
+    });
+    summary.list.forEach(function (r) {
+      var rule = ruleById[r.id], checked = r.checkedIn.length > 0, key = "r:" + r.id;
+      var radius = Math.min(16, 7 + 2.3 * (r.cases.length - 1));
+      var g = makeNode(key, rule.short,
+        "Rule: " + rule.name + ". " + (checked ? "Checked by a person." : "Found, not yet checked.") + " In " + r.cases.length + (r.cases.length === 1 ? " case." : " cases."),
+        false, checked ? "checked" : "found");
+      g.appendChild(sv("circle", { class: "ring", r: radius + 5 }));
+      g.appendChild(sv("circle", { class: "mark", r: radius }));
+      var t = sv("text", { class: "label label-rule" + (showKeys[key] ? " show" : ""), "text-anchor": labelOff[key].anchor });
+      t.textContent = rule.short;
+      gLabels.appendChild(t);
+      labelEls[key] = t;
+      gNodes.appendChild(g);
+      nodeEls["r:" + r.id] = g;
+    });
+    state.added.forEach(function (cid) {
+      var c = caseById[cid];
+      var g = makeNode("c:" + cid, c.label,
+        "Case: " + c.label + ". " + c.rules.length + " rules. " + (c.checkedOn ? "Checked by a person." : "Found by research, not yet checked."), true);
+      g.appendChild(sv("rect", { class: "ring", x: -19, y: -19, width: 38, height: 38, rx: 10 }));
+      g.appendChild(sv("rect", { class: "mark", x: -14, y: -14, width: 28, height: 28, rx: 7 }));
+      var t = sv("text", { class: "label label-case", "text-anchor": "middle" });
+      t.textContent = c.label;
+      gLabels.appendChild(t);
+      labelEls["c:" + cid] = t;
+      gNodes.appendChild(g);
+      nodeEls["c:" + cid] = g;
+    });
+
+    var myAnim = ++animId;
+    pos = {};
+    Object.keys(target).forEach(function (k) { pos[k] = { x: target[k].x, y: target[k].y }; });
+    if (reduceMotion) { place(target); applyHighlight(); return; }
+    var t0 = null, DUR = 750;
+    function frame(ts) {
+      if (myAnim !== animId) return;
+      if (t0 === null) t0 = ts;
+      var u = Math.min(1, (ts - t0) / DUR), e = 1 - Math.pow(1 - u, 3), cur = {};
+      Object.keys(target).forEach(function (k) {
+        cur[k] = { x: from[k].x + (target[k].x - from[k].x) * e, y: from[k].y + (target[k].y - from[k].y) * e };
+      });
+      place(cur);
+      if (u < 1) window.requestAnimationFrame(frame);
+    }
+    place(from);
+    applyHighlight();
+    window.requestAnimationFrame(frame);
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Empty state, list view, detail                                */
+  /* ------------------------------------------------------------ */
+  function renderDatasetBody() {
+    datasetDirty = false;
+    var empty = state.added.length === 0;
+    var gp = $("graph-panel"), lp = $("list-panel");
+    var old = $("empty-box");
+    if (old) old.parentNode.removeChild(old);
+    $("view-graph").setAttribute("aria-pressed", state.view === "graph" ? "true" : "false");
+    $("view-list").setAttribute("aria-pressed", state.view === "list" ? "true" : "false");
+    if (empty) {
+      gp.hidden = true; lp.hidden = true;
+      var box = el("div", { class: "panel empty", id: "empty-box" }, [
+        el("h3", { text: "The dataset is empty." }),
+        el("p", { text: "Run the first case to see the dataset start, or add all the sample cases at once." }),
+        el("div", { class: "actions" }, [
+          el("button", { type: "button", class: "button", text: "Run the first case", onclick: function () { showTab("run", true); } }),
+          el("button", { type: "button", class: "button button-light", text: "Add all " + D.cases.length + " sample cases", onclick: addAll })
+        ])
+      ]);
+      gp.parentNode.insertBefore(box, gp);
+      return;
+    }
+    gp.hidden = state.view !== "graph";
+    lp.hidden = state.view !== "list";
+    renderGraph();
+    renderList();
+  }
+  function renderList() {
+    var lp = $("list-panel"), s = summarize(state.added);
+    lp.textContent = "";
+    lp.appendChild(el("h3", { text: "Cases" }));
+    var cards = el("div", { class: "case-cards" });
+    state.added.forEach(function (cid) {
+      var c = caseById[cid];
+      cards.appendChild(el("div", { class: "case-card" }, [
+        el("button", { type: "button", class: "linkish", text: c.label, onclick: function () { select("case", cid); focusDetail(); } }),
+        el("p", { text: c.rules.length + " rules. " + (c.checkedOn ? "Checked by a person on " + fmtDate(c.checkedOn) + "." : "Found on " + fmtDate(c.analysed) + ", not yet checked.") })
+      ]));
+    });
+    lp.appendChild(cards);
+    lp.appendChild(el("h3", { text: "Rules" }));
+    var tbody = el("tbody");
+    s.list.slice().sort(function (a, b) { return b.cases.length - a.cases.length; }).forEach(function (r) {
+      var rule = ruleById[r.id];
+      tbody.appendChild(el("tr", {}, [
+        el("td", {}, [el("button", { type: "button", class: "linkish", text: rule.name, onclick: function () { select("rule", r.id); focusDetail(); } })]),
+        el("td", { "data-label": "Where", text: rule.where }),
+        el("td", { "data-label": "Status" }, [chipChecked(r.checkedIn.length > 0, checkedLabel(r))]),
+        el("td", { "data-label": "Cases", text: r.cases.map(function (cid) { return caseById[cid].label; }).join(", ") })
+      ]));
+    });
+    lp.appendChild(el("table", {}, [
+      el("thead", {}, [el("tr", {}, [el("th", { scope: "col", text: "Rule" }), el("th", { scope: "col", text: "Where" }), el("th", { scope: "col", text: "Status" }), el("th", { scope: "col", text: "Cases" })])]),
+      tbody
+    ]));
+  }
+  function focusDetail() {
+    var d = $("detail");
+    d.setAttribute("tabindex", "-1");
+    d.focus({ preventScroll: false });
+    if (d.scrollIntoView && window.innerWidth < 981) d.scrollIntoView({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+  }
+  function renderDetail() {
+    var d = $("detail"), s = summarize(state.added);
+    d.textContent = "";
+    var sel = state.selected;
+    if (sel && sel.type === "rule" && !s.rules[sel.id]) sel = state.selected = null;
+    if (sel && sel.type === "case" && state.added.indexOf(sel.id) < 0) sel = state.selected = null;
+    if (!sel) {
+      d.appendChild(el("h3", { text: "Select a dot" }));
+      d.appendChild(el("p", { class: "kv", text: "Pick a rule to see where it applies, its source, whether a person has checked it, and which cases share it. Pick a case to see its rules." }));
+      d.appendChild(el("p", { class: "kv", text: "To see the whole graph again, click the empty space, or the same dot once more." }));
+      return;
+    }
+    d.appendChild(el("button", { type: "button", class: "text-button", style: "margin-bottom:0.7rem", text: "Show the whole graph", onclick: clearSelection }));
+    if (sel.type === "rule") {
+      var rule = ruleById[sel.id], r = s.rules[sel.id];
+      d.appendChild(el("p", { class: "eyebrow", style: "margin-bottom:0.5rem", text: "Rule" }));
+      d.appendChild(el("h3", { text: rule.name }));
+      d.appendChild(el("div", { style: "display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.7rem" }, [
+        chipChecked(r.checkedIn.length > 0, checkedLabel(r)),
+        r.cases.length > 1 ? el("span", { class: "chip chip-new", text: "Shared by " + r.cases.length + " cases" }) : null
+      ]));
+      d.appendChild(el("p", { class: "kv" }, [el("b", { text: "Where: " }), rule.where]));
+      d.appendChild(el("p", { class: "kv" }, [el("b", { text: "Kind: " }), rule.kind]));
+      d.appendChild(el("h4", { text: "In the dataset from" }));
+      r.cases.forEach(function (cid) {
+        var c = caseById[cid], e = edgeOf(cid, sel.id);
+        var line = el("div", { class: "case-line" });
+        line.appendChild(el("div", { class: "head" }, [
+          el("button", { type: "button", class: "linkish", text: c.label, onclick: function () { select("case", cid); } }),
+          chipStatus(e.status)
+        ]));
+        line.appendChild(el("p", { text: c.checkedOn ? "Checked by a person on " + fmtDate(c.checkedOn) + "." : "Found by a research run on " + fmtDate(c.analysed) + ". Not yet checked by a person." }));
+        if (e.parts) {
+          line.appendChild(el("ul", {}, e.parts.map(function (p) { return el("li", { text: p.name + ": " + statusText(p.status).toLowerCase() }); })));
+        } else if (e.listedAs) {
+          line.appendChild(el("p", { text: "Listed in this case as: " + e.listedAs }));
+        }
+        if (e.checkNote) line.appendChild(el("p", { text: e.checkNote }));
+        line.appendChild(el("ul", {}, sourceItems(e)));
+        d.appendChild(line);
+      });
+      return;
+    }
+    var c = caseById[sel.id];
+    var worth = c.rules.filter(function (e) { return e.status === "worth"; }).length;
+    d.appendChild(el("p", { class: "eyebrow", style: "margin-bottom:0.5rem", text: "Case" }));
+    d.appendChild(el("h3", { text: c.label }));
+    d.appendChild(el("div", { style: "margin-bottom:0.7rem" }, [chipChecked(!!c.checkedOn, c.checkedOn ? "Checked by a person" : "Found by research, not yet checked")]));
+    d.appendChild(el("p", { class: "kv" }, [el("b", { text: "Use case: " }), c.useCase]));
+    d.appendChild(el("p", { class: "kv" }, [el("b", { text: "Industry: " }), c.industry]));
+    d.appendChild(el("p", { class: "kv" }, [el("b", { text: c.checkedOn ? "Checked: " : "Analysed: " }), fmtDate(c.checkedOn || c.analysed)]));
+    d.appendChild(el("p", { class: "kv" }, [el("b", { text: "Rules: " }), c.rules.length + " (" + worth + " worth a look, " + (c.rules.length - worth) + " looked at and ruled out)"]));
+    d.appendChild(el("h4", { text: "Rules for this case" }));
+    d.appendChild(el("ul", { class: "rule-items" }, c.rules.map(function (e) {
+      return el("li", {}, [
+        el("button", { type: "button", class: "linkish", text: ruleById[e.rule].name, onclick: function () { select("rule", e.rule); } }),
+        chipStatus(e.status)
+      ]);
+    })));
+  }
+
+  /* ------------------------------------------------------------ */
+  /* Dataset actions                                               */
+  /* ------------------------------------------------------------ */
+  function renderAll() {
+    renderCounts();
+    renderDatasetBody();
+    renderDetail();
+    renderRunPanel();
+  }
+  function addAll() {
+    if (state.running) return;
+    D.suggestedOrder.forEach(function (cid) { if (state.added.indexOf(cid) < 0) state.added.push(cid); });
+    state.lastRun = null;
+    clearRun();
+    renderAll();
+  }
+  function startOver() {
+    if (state.running) return;
+    state.added = []; state.selected = null; pos = {};
+    state.lastRun = null;
+    clearRun();
+    renderAll();
+  }
+  /* the clear way from the dataset to the other half of the demo */
+  $("go-run").addEventListener("click", function () {
+    showTab("run", true);
+    var bar = document.querySelector(".tabs");
+    if (bar && bar.getBoundingClientRect().top < 0) bar.scrollIntoView({ block: "start" });
+  });
+  $("add-all").addEventListener("click", addAll);
+  $("reset-1").addEventListener("click", startOver);
+  $("reset-2").addEventListener("click", startOver);
+  /* a click on the empty part of the graph, or Escape, clears the selection */
+  graph.addEventListener("click", function (ev) {
+    if (!ev.target.closest || !ev.target.closest(".node")) clearSelection();
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && !$("panel-dataset").hidden) clearSelection();
+  });
+  $("view-graph").addEventListener("click", function () { state.view = "graph"; renderDatasetBody(); });
+  $("view-list").addEventListener("click", function () { state.view = "list"; renderDatasetBody(); });
+
+  /* ------------------------------------------------------------ */
+  /* Run a use case                                                */
+  /* ------------------------------------------------------------ */
+  var selectEl = $("case-select");
+  function nextSuggested() {
+    for (var i = 0; i < D.suggestedOrder.length; i++) {
+      if (state.added.indexOf(D.suggestedOrder[i]) < 0) return D.suggestedOrder[i];
+    }
+    return D.suggestedOrder[0];
+  }
+  function clearRun() {
+    $("steps").textContent = "";
+    $("progress").textContent = "";
+    state.runCase = null;
+    clearMiniMarks();
+  }
+
+  /* ------------------------------------------------------------ */
+  /* "Dataset so far": the small live view beside the run          */
+  /* ------------------------------------------------------------ */
+  var miniSvg = $("mini-graph");
+  var miniPos = {}, miniAnim = 0, miniShown = null;
+  var miniMarks = { lit: {}, fresh: {}, note: "" };
+  function clearMiniMarks() { miniMarks = { lit: {}, fresh: {}, note: "" }; }
+  function countText(nRules, nChecked) {
+    return nRules + (nRules === 1 ? " rule" : " rules") + " \u00b7 " + nChecked + " checked";
+  }
+  function renderMini(quiet) {
+    var s = summarize(state.added);
+    var countEl = $("mini-count"), noteEl = $("mini-note"), liveEl = $("mini-live");
+    var myAnim = ++miniAnim;
+    noteEl.textContent = miniMarks.note;
+    if (!state.added.length) {
+      miniSvg.textContent = "";
+      miniSvg.setAttribute("hidden", "");
+      $("mini-empty").hidden = false;
+      countEl.textContent = "";
+      liveEl.textContent = "The dataset is empty.";
+      miniPos = {}; miniShown = { rules: 0, checked: 0 };
+      return;
+    }
+    miniSvg.removeAttribute("hidden");
+    $("mini-empty").hidden = true;
+
+    /* same layout function as the full graph, drawn small and without labels */
+    var target = layout(state.added, s, miniPos), from = {};
+    Object.keys(target).forEach(function (k) {
+      if (miniPos[k]) from[k] = { x: miniPos[k].x, y: miniPos[k].y };
+      else from[k] = { x: target[k].x, y: target[k].y };
+    });
+    miniSvg.textContent = "";
+    miniSvg.classList.toggle("mini-quiet", !!quiet);
+    /* fit the view to the dots, so the small graph fills its window */
+    var x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    [target, from].forEach(function (P) {
+      Object.keys(P).forEach(function (k) {
+        x1 = Math.min(x1, P[k].x); y1 = Math.min(y1, P[k].y); x2 = Math.max(x2, P[k].x); y2 = Math.max(y2, P[k].y);
+      });
+    });
+    var pxW = miniSvg.clientWidth || 290, pxH = miniSvg.clientHeight || 128, pad = 16;
+    var u = Math.max((x2 - x1) / (pxW - 2 * pad), (y2 - y1) / (pxH - 2 * pad), 1.2);   /* canvas units per screen pixel */
+    var vw = pxW * u, vh = pxH * u;
+    miniSvg.setAttribute("viewBox", ((x1 + x2) / 2 - vw / 2).toFixed(1) + " " + ((y1 + y2) / 2 - vh / 2).toFixed(1) + " " + vw.toFixed(1) + " " + vh.toFixed(1));
+    var gE = sv("g", {}), gN = sv("g", {}), nodes = {}, edges = [];
+    miniSvg.appendChild(gE); miniSvg.appendChild(gN);
+    state.added.forEach(function (cid) {
+      caseById[cid].rules.forEach(function (e) {
+        var line = sv("line", { class: "m-edge" + (e.status === "worth" ? "" : " out") });
+        gE.appendChild(line);
+        edges.push({ a: "c:" + cid, b: "r:" + e.rule, line: line });
+      });
+    });
+    s.list.forEach(function (r) {
+      var key = "r:" + r.id, rpx = Math.min(7.5, 4 + 1.1 * (r.cases.length - 1)), radius = rpx * u;
+      var g = sv("g", { class: "m-node m-rule " + (r.checkedIn.length ? "checked" : "found") + (miniMarks.lit[key] ? " lit" : "") + (miniMarks.fresh[key] ? " is-new" : "") });
+      g.appendChild(sv("circle", { class: "halo", r: (rpx + 3.2) * u }));
+      g.appendChild(sv("circle", { class: "shape", r: radius }));
+      gN.appendChild(g); nodes[key] = g;
+    });
+    state.added.forEach(function (cid) {
+      var key = "c:" + cid;
+      var g = sv("g", { class: "m-node m-case" + (miniMarks.fresh[key] ? " is-new" : "") });
+      g.appendChild(sv("rect", { class: "halo", x: -10 * u, y: -10 * u, width: 20 * u, height: 20 * u, rx: 5 * u }));
+      g.appendChild(sv("rect", { class: "shape", x: -6.5 * u, y: -6.5 * u, width: 13 * u, height: 13 * u, rx: 3 * u }));
+      gN.appendChild(g); nodes[key] = g;
+    });
+    function placeMini(P) {
+      Object.keys(nodes).forEach(function (k) {
+        nodes[k].setAttribute("transform", "translate(" + P[k].x.toFixed(1) + "," + P[k].y.toFixed(1) + ")");
+      });
+      edges.forEach(function (e) {
+        e.line.setAttribute("x1", P[e.a].x.toFixed(1)); e.line.setAttribute("y1", P[e.a].y.toFixed(1));
+        e.line.setAttribute("x2", P[e.b].x.toFixed(1)); e.line.setAttribute("y2", P[e.b].y.toFixed(1));
+      });
+    }
+    miniPos = {};
+    Object.keys(target).forEach(function (k) { miniPos[k] = { x: target[k].x, y: target[k].y }; });
+
+    /* the count line: the same summary as the rest of the page */
+    var prevShown = miniShown;
+    miniShown = { rules: s.nRules, checked: s.nChecked };
+    var changed = prevShown && (prevShown.rules !== s.nRules || prevShown.checked !== s.nChecked);
+    liveEl.textContent = "Dataset so far: " + s.nRules + (s.nRules === 1 ? " rule, " : " rules, ") + s.nChecked + " checked by a person." + (miniMarks.note ? " " + miniMarks.note.replace(/^\+/, "") : "");
+
+    if (reduceMotion) {
+      placeMini(target);
+      countEl.textContent = countText(s.nRules, s.nChecked);
+      return;
+    }
+    if (changed) {
+      countEl.classList.remove("tick");
+      void countEl.offsetWidth;
+      countEl.classList.add("tick");
+    } else {
+      countEl.textContent = countText(s.nRules, s.nChecked);
+    }
+    var t0 = null, DUR = 650;
+    function frame(ts) {
+      if (myAnim !== miniAnim) return;
+      if (t0 === null) t0 = ts;
+      var u = Math.min(1, (ts - t0) / DUR), e = 1 - Math.pow(1 - u, 3), cur = {};
+      Object.keys(target).forEach(function (k) {
+        cur[k] = { x: from[k].x + (target[k].x - from[k].x) * e, y: from[k].y + (target[k].y - from[k].y) * e };
+      });
+      placeMini(cur);
+      if (changed) {
+        countEl.textContent = countText(
+          Math.round(prevShown.rules + (s.nRules - prevShown.rules) * e),
+          Math.round(prevShown.checked + (s.nChecked - prevShown.checked) * e));
+      }
+      if (u < 1) window.requestAnimationFrame(frame);
+    }
+    placeMini(from);
+    if (changed) countEl.textContent = countText(prevShown.rules, prevShown.checked);
+    window.requestAnimationFrame(frame);
+    /* if the tab is in the background and frames do not run, still end on the true numbers */
+    window.setTimeout(function () {
+      if (myAnim !== miniAnim) return;
+      placeMini(target);
+      countEl.textContent = countText(s.nRules, s.nChecked);
+    }, DUR + 400);
+  }
+  /* Open the full dataset. If a case was run in this visit, show it selected. */
+  function openDataset(cid) {
+    state.view = "graph";
+    if (cid && state.added.indexOf(cid) >= 0) state.selected = { type: "case", id: cid };
+    datasetDirty = true;
+    showTab("dataset", true);
+    renderDetail();
+    applyHighlight();
+    window.scrollTo({ top: document.querySelector(".tabs").offsetTop - 110, behavior: reduceMotion ? "auto" : "smooth" });
+  }
+  $("mini-open").addEventListener("click", function () { openDataset(state.lastRun); });
+
+  /* Keep the left column in view beside the steps, but only when it fits the window. */
+  function fitSide() {
+    var side = $("run-side"), follow = $("side-follow");
+    side.classList.remove("stick-all");
+    follow.classList.remove("stick");
+    if (window.innerWidth < 981 || $("panel-run").hidden) return;
+    var top = document.querySelector(".top").offsetHeight + 16;
+    side.style.setProperty("--stick-top", top + "px");
+    var whole = $("config-box").offsetHeight + follow.offsetHeight + 16;
+    if (whole + top + 12 <= window.innerHeight) side.classList.add("stick-all");
+    else if (document.querySelector(".mini").offsetHeight + top + 12 <= window.innerHeight) follow.classList.add("stick");
+  }
+  window.addEventListener("resize", fitSide);
+
+  /* When a run starts, make sure "Dataset so far" is on screen, with as little scrolling as possible. */
+  function bringMiniIntoView() {
+    var bar = document.querySelector(".top").offsetHeight;
+    var how = reduceMotion ? "auto" : "smooth";
+    if (window.innerWidth < 981) {
+      /* narrow screen: the Run button at the top, the small view right under it */
+      var b = $("run-btn").getBoundingClientRect();
+      window.scrollBy({ top: b.top - bar - 12, behavior: how });
+      return;
+    }
+    var m = document.querySelector(".mini").getBoundingClientRect();
+    var over = m.bottom + 12 - window.innerHeight;       /* how far its bottom is below the window */
+    if (over <= 0) return;
+    var room = $("steps").getBoundingClientRect().top - bar - 10;      /* keep the first step in view */
+    var delta = Math.min(over, Math.max(0, room));
+    if (delta > 0) window.scrollBy({ top: delta, behavior: how });
+  }
+  function renderRunPanel() {
+    if (!state.runCase || (state.added.indexOf(state.runCase) >= 0 && !$("steps").childNodes.length)) state.runCase = nextSuggested();
+    selectEl.textContent = "";
+    D.suggestedOrder.forEach(function (cid) {
+      var inSet = state.added.indexOf(cid) >= 0;
+      var o = el("option", { value: cid, text: caseById[cid].label + (inSet ? " (in the dataset)" : "") });
+      if (cid === state.runCase) o.selected = true;
+      selectEl.appendChild(o);
+    });
+    var c = caseById[state.runCase];
+    $("f-usecase").textContent = c.useCase;
+    $("f-tech").textContent = c.technology;
+    $("f-industry").textContent = c.industry;
+    var inSet = state.added.indexOf(state.runCase) >= 0;
+    $("run-btn").disabled = inSet || state.running;
+    $("run-label").textContent = state.running ? "Running…" : inSet ? "Already in the dataset" : "Run analysis";
+    selectEl.disabled = state.running;
+
+    var order = $("order");
+    order.textContent = "";
+    D.suggestedOrder.forEach(function (cid) {
+      order.appendChild(el("li", { class: state.added.indexOf(cid) >= 0 ? "done" : "", text: caseById[cid].label }));
+    });
+
+    var s = summarize(state.added), sf = $("so-far");
+    sf.textContent = "";
+    if (!state.added.length) {
+      sf.appendChild(document.createTextNode("The dataset is empty. Pick a case and run it."));
+    } else {
+      sf.appendChild(document.createTextNode("In the dataset now:"));
+      state.added.forEach(function (cid) { sf.appendChild(el("span", { class: "chip", text: caseById[cid].label })); });
+      sf.appendChild(document.createTextNode(s.nRules + " rules, " + s.nChecked + " checked by a person."));
+    }
+    if (!$("steps").childNodes.length) {
+      var all = state.added.length === D.cases.length;
+      $("steps").appendChild(el("div", { class: "idle" }, [
+        el("p", { text: all
+          ? "All " + D.cases.length + " sample cases are in the dataset. Start over with an empty dataset to run them again."
+          : inSet
+            ? "This case is already in the dataset. Pick another case, or start over with an empty dataset."
+            : "Press Run analysis. The steps of the saved run appear here, one at a time." })
+      ]));
+    }
+    renderMini();
+    fitSide();
+  }
+  selectEl.addEventListener("change", function () {
+    if (state.running) return;
+    state.runCase = selectEl.value;
+    $("steps").textContent = "";
+    $("progress").textContent = "";
+    clearMiniMarks();
+    renderRunPanel();
+  });
+
+  function stepCard(num, title, body, prov, extraClass) {
+    var card = el("div", { class: "step" + (extraClass ? " " + extraClass : "") }, [
+      el("span", { class: "num", text: num }),
+      el("h3", { text: title })
+    ]);
+    body.forEach(function (b) { if (b) card.appendChild(typeof b === "string" ? el("p", { text: b }) : b); });
+    if (prov) card.appendChild(el("p", { class: "prov", text: prov }));
+    return card;
+  }
+  function ruleChips(ids, summary) {
+    return el("div", { class: "chips" }, ids.map(function (id) {
+      var checked = summary && summary.rules[id] && summary.rules[id].checkedIn.length > 0;
+      return el("span", { class: "chip" }, [
+        summary ? el("span", { class: "dot " + (checked ? "dot-checked" : "dot-found") }) : null,
+        ruleById[id].short
+      ]);
+    }));
+  }
+
+  function runCase() {
+    var cid = state.runCase, c = caseById[cid];
+    if (state.running || state.added.indexOf(cid) >= 0) return;
+    state.running = true;
+    clearMiniMarks();
+    renderRunPanel();
+    var stepsBox = $("steps"), progress = $("progress");
+    stepsBox.textContent = "";
+    bringMiniIntoView();
+
+    /* Step 1 is computed here, from the cases added so far. Nothing is scripted. */
+    var before = summarize(state.added);
+    var ids = c.rules.map(function (e) { return e.rule; });
+    var already = ids.filter(function (id) { return !!before.rules[id]; });
+    var fresh = ids.filter(function (id) { return !before.rules[id]; });
+    var alreadyChecked = already.filter(function (id) { return before.rules[id].checkedIn.length > 0; });
+
+    var builders = [];
+    builders.push(function () {
+      var body;
+      if (!state.added.length) {
+        body = ["The dataset is empty, so there is nothing to start from. All " + ids.length + " rules for this case are new."];
+      } else {
+        body = [
+          "The dataset holds " + before.nRules + " rules from " + state.added.length + (state.added.length === 1 ? " case." : " cases."),
+          already.length
+            ? already.length + " of the " + ids.length + " rules for this case are already in the dataset. " + alreadyChecked.length + " of those " + (alreadyChecked.length === 1 ? "has" : "have") + " been checked by a person. " + fresh.length + (fresh.length === 1 ? " is new." : " are new.")
+            : "None of the " + ids.length + " rules for this case are in the dataset yet. All are new.",
+          already.length ? ruleChips(already, before) : null
+        ];
+      }
+      return stepCard("Step 1", "Checking the dataset", body, "Computed in your browser, just now, from the cases you have added.");
+    });
+    builders.push(function () {
+      var r = c.research, body;
+      if (c.origin === "found") {
+        body = [
+          "A large frontier model mapped which rules to look at, and a search tool fetched pages from the sites the run listed as official. It listed " + r.rulesListed + " rule sets and saved " + r.pagesSaved + " source pages.",
+          c.note || null,
+          "This saved run researched the whole case, because there was no dataset to start from. With the dataset in place, research is only needed for what is new" + (state.added.length ? ": here, " + fresh.length + " of " + ids.length + " rules." : ".") + " Joining those two steps is the work ahead."
+        ];
+      } else {
+        body = [r.text, "With the dataset in place, research is only needed for what is new" + (state.added.length ? ": here, " + fresh.length + " of " + ids.length + " rules." : ".") + " Joining those two steps is the work ahead."];
+      }
+      return stepCard("Step 2", "Research on official sources", body,
+        "Saved run of " + fmtDate(r.date) + " · " + r.model + (c.checkedOn ? " · checked by a person on " + fmtDate(c.checkedOn) : " · not yet checked by a person"));
+    });
+    if (c.smallModel) {
+      builders.push(function () {
+        var m = c.smallModel, t = D.smallModelTest;
+        return stepCard("Step 3", "A small model reads the dataset", [
+          m.model + " (" + m.modelDetail + ") ran on a laptop. It was given " + m.given + " draft rules and one question for each: is this rule worth a look for this product? It found " + m.picked + " worth a look and set " + m.setAside + " aside. The whole report took " + m.minutes + " minutes, with no web search and no large model.",
+          t.stability,
+          t.draftNote
+        ], "Saved run of " + fmtDate(m.date) + " · " + m.model + ", " + m.modelDetail + " · " + m.machine);
+      });
+    }
+    var resultNum = "Step " + (builders.length + 1);
+    builders.push(function () {
+      var list = el("ul", { class: "result-list" }, c.rules.map(function (e) {
+        var isNew = fresh.indexOf(e.rule) >= 0;
+        var first = (e.sources || [])[0];
+        return el("li", {}, [
+          el("div", { class: "name", text: ruleById[e.rule].name }),
+          el("div", { class: "meta" }, [
+            chipStatus(e.status),
+            c.checkedOn ? chipChecked(true, "Checked " + fmtDate(c.checkedOn))
+              : (before.rules[e.rule] && before.rules[e.rule].checkedIn.length) ? chipChecked(true, "Checked in another case")
+              : chipChecked(false, "Found, not yet checked"),
+            el("span", { class: "chip" + (isNew ? " chip-new" : ""), text: isNew ? "New to the dataset" : "Already in the dataset" }),
+            first ? el("span", { class: "src" }, [el("a", { href: first.url, target: "_blank", rel: "noopener noreferrer", text: first.title }), e.sources.length > 1 ? el("small", { text: " +" + (e.sources.length - 1) + " more" }) : null])
+                  : el("span", { class: "src" }, [el("small", { text: e.sourceGap || "No source page saved in this case" })])
+          ])
+        ]);
+      }));
+      return stepCard(resultNum, "The rules for this case", [
+        "Each team also gets a written report. This page shows the rules behind it. Nothing here says a team has or has not done something. It points at what is worth confirming.",
+        list
+      ], null);
+    });
+
+    var total = builders.length, i = 0;
+    var delay = reduceMotion ? 0 : 950;
+    function next() {
+      if (i < total) {
+        progress.textContent = "Running analysis… (step " + (i + 1) + " of " + total + ")";
+        stepsBox.appendChild(builders[i]());
+        if (i === 0 && state.added.length) {
+          /* the small view shows that the dataset was looked at first */
+          already.forEach(function (id) { miniMarks.lit["r:" + id] = true; });
+          miniMarks.note = already.length
+            ? already.length + " of " + ids.length + " rules for this case are already here."
+            : "None of the rules for this case are here yet.";
+          renderMini();
+        }
+        i++;
+        window.setTimeout(next, delay);
+        return;
+      }
+      /* add the case to the dataset */
+      state.added.push(cid);
+      var after = summarize(state.added);
+      state.running = false;
+      state.lastRun = cid;
+      clearMiniMarks();
+      miniMarks.fresh["c:" + cid] = true;
+      fresh.forEach(function (id) { miniMarks.fresh["r:" + id] = true; });
+      miniMarks.note = fresh.length
+        ? "+" + fresh.length + (fresh.length === 1 ? " new rule" : " new rules") + " from this case"
+        : "No new rules. All were already in the dataset.";
+      progress.textContent = "Analysis complete. " + c.label + " is now in the dataset.";
+      var card = stepCard("Done", "Added to the dataset", [
+        fresh.length
+          ? fresh.length + (fresh.length === 1 ? " new rule was" : " new rules were") + " added" + (c.checkedOn ? ", each one checked by a person." : ". They are marked as found, not yet checked.")
+          : "No new rules were needed. Every rule for this case was already in the dataset.",
+        fresh.length ? ruleChips(fresh, after) : null,
+        el("div", { class: "figures" }, [
+          el("div", {}, [el("strong", { text: before.nRules + " → " + after.nRules }), el("span", { text: "rules in the dataset" })]),
+          el("div", {}, [el("strong", { text: before.nChecked + " → " + after.nChecked }), el("span", { text: "checked by a person" })]),
+          el("div", {}, [el("strong", { text: before.nShared + " → " + after.nShared }), el("span", { text: "shared by two or more cases" })])
+        ]),
+        el("div", { style: "display:flex;flex-wrap:wrap;gap:0.8rem 1.4rem;align-items:center" }, [
+          el("button", { type: "button", class: "button", text: "See the dataset grow", onclick: function () { openDataset(cid); } }),
+          state.added.length < D.cases.length ? el("button", { type: "button", class: "text-button", text: "Next case: " + caseById[nextSuggested()].label, onclick: function () {
+            state.runCase = nextSuggested();
+            $("steps").textContent = "";
+            $("progress").textContent = "";
+            clearMiniMarks();
+            renderRunPanel();
+            selectEl.focus();
+          } }) : null
+        ])
+      ], null, "done");
+      stepsBox.appendChild(card);
+      renderCounts();
+      renderDetail();
+      renderRunPanel();
+      datasetDirty = true;
+    }
+    next();
+  }
+  $("run-btn").addEventListener("click", runCase);
+
+  /* ------------------------------------------------------------ */
+  /* Start                                                         */
+  /* ------------------------------------------------------------ */
+  renderAll();
+  /* the page opens on "Run a use case"; the graph is drawn fresh when its tab is first opened */
+  datasetDirty = true;
+  showTab("run");
+})();
+</script>
+</body>
+</html>
