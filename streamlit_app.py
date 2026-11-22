@@ -4,7 +4,10 @@ Live demo interface for the compliance analysis pipeline.
 """
 
 import os
+import re
 import json
+import base64
+import secrets
 import streamlit as st
 import streamlit.components.v1 as components
 import time
@@ -53,6 +56,7 @@ from agent import (
     save_report,
     append_test_log,
     score_research_quality,
+    AnalysisError,
     EmptyResearchError,
     ScopingError,
     MIN_ADEQUATE_RESULTS,
@@ -70,13 +74,54 @@ from tracking import (
     log_error,
     mark_run_failed,
     is_rate_limited,
+    save_free_report_request,
+    save_demo_access,
+    find_demo_access,
 )
 
-VERSION = "v0.7"
+VERSION = "v0.7.2"
 _langfuse = get_langfuse_client()
 
+# ── Demo copy and links (v0.7.2) ──────────────────────────────────────────────
+BOOK_CALL_URL = "https://calendly.com/yeyfreya-noacue/30min"
+BOOK_CALL_LINE = f"[book a call with the Noacue team]({BOOK_CALL_URL})"
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+ACCESS_CODE_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+CONSENT_LINE = (
+    "By accessing the demo, you agree that Noacue may email you about your report. "
+    "Your details stay in our private list. Request removal anytime at hello@noacue.com."
+)
+UNAVAILABLE_MSG = (
+    f"The demo is briefly unavailable. Please try again soon, or {BOOK_CALL_LINE}."
+)
+
+
+def _mark_data_uri() -> str:
+    """The Noacue mark as an inline image; empty if the file is missing (name still shows)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "noacue-mark.png")
+    try:
+        with open(path, "rb") as f:
+            return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+    except OSError:
+        return ""
+
+
+# The name as on noacue.com: mark, "Noacue", and the dot (same font, weight, spacing)
+_MARK_URI = _mark_data_uri()
+WORDMARK_HTML = (
+    '<div class="wordmark"><a href="https://noacue.com" target="_blank" aria-label="Noacue home">'
+    + (f'<img src="{_MARK_URI}" alt="">' if _MARK_URI else "")
+    + 'Noacue<span class="dot" aria-hidden="true">.</span></a></div>'
+)
+
+# Shown only while a report runs: a click in the sidebar would stop the run
+SIDEBAR_LOCK_CSS = (
+    "<style>[data-testid='stSidebar'] "
+    "{ pointer-events: none; user-select: none; opacity: 0.45; }</style>"
+)
+
 st.set_page_config(
-    page_title="AI Compliance Gap Analyzer",
+    page_title="Noacue demo",
     page_icon="🛡️",
     layout="wide",
 )
@@ -86,6 +131,25 @@ st.markdown(
     """
     <style>
     .block-container { max-width: 960px; }
+
+    /* The Noacue name above the hero, matched to the noacue.com header */
+    .wordmark {
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: 600;
+        font-size: 2rem;
+        letter-spacing: -0.075em;
+        line-height: 1;
+        margin-bottom: 1.25rem;
+    }
+    .wordmark a, .wordmark a:hover { color: inherit; text-decoration: none; }
+    .wordmark .dot { color: #7475a5; }
+    .wordmark img {
+        display: inline-block;
+        width: 1.1em;
+        height: 1.1em;
+        margin-right: 0.22em;
+        vertical-align: -0.22em;
+    }
 
     /* Hero headline */
     .hero-title {
@@ -109,14 +173,43 @@ st.markdown(
         flex: 1;
         padding: 0.85rem 1rem;
         border-radius: 10px;
-        background: rgba(128,128,128,0.08);
+        background: #ffffff;
+        border: 1px solid #cdd1da;
         text-align: center;
     }
     .metric-card .label { font-size: 0.78rem; opacity: 0.6; }
     .metric-card .value { font-size: 1.3rem; font-weight: 600; }
 
+    /* Note boxes in the site's colors (white card, line border, violet edge) */
+    .note {
+        background: #ffffff;
+        border: 1px solid #cdd1da;
+        border-left: 4px solid #55528c;
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1rem;
+        color: #202632;
+    }
+
+    /* Main buttons in the site's dark ink, as on noacue.com */
+    [data-testid="stBaseButton-primary"],
+    [data-testid="stBaseButton-primaryFormSubmit"] {
+        background: linear-gradient(150deg, #424855, #202630 70%);
+        border: 1px solid #292f3b;
+        color: #ffffff;
+    }
+    [data-testid="stBaseButton-primary"]:hover,
+    [data-testid="stBaseButton-primaryFormSubmit"]:hover {
+        background: linear-gradient(150deg, #4c5261, #2a303b 70%);
+        border-color: #292f3b;
+        color: #ffffff;
+    }
+
     /* Sidebar polish */
-    [data-testid="stSidebar"] { min-width: 340px; }
+    [data-testid="stSidebar"] {
+        min-width: 340px;
+        border-right: 1px solid #cdd1da;
+    }
 
     /* Divider */
     hr { margin: 1.5rem 0; }
@@ -137,6 +230,54 @@ if "supabase_session_id" not in st.session_state:
         app_version=VERSION,
     )
     log_user_event(st.session_state.supabase_session_id, "page_load")
+
+
+# ── Email screen (v0.7.2) ─────────────────────────────────────────────────────
+# The demo opens on one email field. The email is saved the moment the visitor enters, and
+# a private code in the page address lets them back in after a refresh (7 days, tracking.py).
+if "demo_email" not in st.session_state:
+    st.session_state.demo_email = None
+
+if not st.session_state.demo_email:
+    _code = st.query_params.get("access")
+    if _code:
+        _known_email = find_demo_access(_code) if ACCESS_CODE_RE.match(_code) else None
+        if _known_email:
+            st.session_state.demo_email = _known_email
+            log_user_event(st.session_state.supabase_session_id, "demo_returned",
+                           event_data={"email": _known_email})
+        else:
+            # Unknown or older than the limit: drop it and ask for the email again
+            del st.query_params["access"]
+
+if not st.session_state.demo_email:
+    _, _gate, _ = st.columns([1, 2, 1])
+    with _gate:
+        st.markdown(
+            WORDMARK_HTML
+            + '<div class="hero-title">See your AI compliance gap report in minutes</div>',
+            unsafe_allow_html=True,
+        )
+        with st.form("access_form"):
+            _gate_email = st.text_input("Your email")
+            st.caption(CONSENT_LINE)
+            _entered = st.form_submit_button("Access the demo", type="primary",
+                                             use_container_width=True)
+        if _entered:
+            # Lower-cased so one address is one count
+            _gate_email = (_gate_email or "").strip().lower()
+            if not EMAIL_RE.match(_gate_email):
+                st.error("Please enter a valid email address.")
+            else:
+                _new_code = secrets.token_urlsafe(16)
+                # Fails closed, like the run limit: no record of the email, no entry
+                if save_demo_access(st.session_state.supabase_session_id, _gate_email, _new_code):
+                    st.session_state.demo_email = _gate_email
+                    st.query_params["access"] = _new_code
+                    st.rerun()
+                else:
+                    st.warning(UNAVAILABLE_MSG)
+    st.stop()
 
 
 # ── Sidebar — inputs ─────────────────────────────────────────────────────────
@@ -177,6 +318,41 @@ with st.sidebar:
     run_btn = st.button("Run Analysis", type="primary", use_container_width=True)
 
     st.divider()
+    email = st.session_state.demo_email
+    if st.session_state.get("editing_email"):
+        # Changed right here, so a report on screen stays where it is
+        with st.form("change_email_form"):
+            _new_email = st.text_input("New email", value=email)
+            _col_save, _col_cancel = st.columns(2)
+            _save = _col_save.form_submit_button("Save", type="primary",
+                                                 use_container_width=True)
+            _cancel = _col_cancel.form_submit_button("Cancel", use_container_width=True)
+        if _cancel:
+            st.session_state.editing_email = False
+            st.rerun()
+        if _save:
+            _new_email = (_new_email or "").strip().lower()
+            if not EMAIL_RE.match(_new_email):
+                st.error("Please enter a valid email address.")
+            elif _new_email == email:
+                st.session_state.editing_email = False
+                st.rerun()
+            else:
+                _new_code = secrets.token_urlsafe(16)
+                # Saved like a first entry, with a fresh private code for the address
+                if save_demo_access(st.session_state.supabase_session_id, _new_email, _new_code):
+                    st.session_state.demo_email = _new_email
+                    st.query_params["access"] = _new_code
+                    st.session_state.editing_email = False
+                    st.rerun()
+                else:
+                    st.warning(UNAVAILABLE_MSG)
+    else:
+        st.caption(f"Email: {email}")
+        if st.button("Change email", type="tertiary"):
+            st.session_state.editing_email = True
+            st.rerun()
+
     st.caption(
         f"{VERSION} · AI agent with live regulatory research · "
         "[GitHub](https://github.com/yeyfreya/ai-compliance-gap-analyzer)"
@@ -185,10 +361,21 @@ with st.sidebar:
 
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown(
-    '<div class="hero-title">🛡️ AI Compliance Gap Analyzer</div>'
+    WORDMARK_HTML
+    + '<div class="hero-title">See your AI compliance gap report in minutes</div>'
     '<div class="hero-sub">'
-    "Enter an AI use case, technology, and industry — the agent researches "
-    "regulations, identifies gaps, and generates a compliance report."
+    "Describe your AI use case, technology and industry. The Noacue agent researches "
+    "current rules from official sources and drafts an AI compliance gap report in "
+    "about 4 minutes."
+    "</div>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    '<div class="note">'
+    "This is a live demo. Each report is drafted automatically and is not reviewed by a "
+    "person, so treat it as a starting point. It may not show the whole picture. For one "
+    "that is checked, verified and tailored to your business, request an AI compliance "
+    "action plan at the end of the report."
     "</div>",
     unsafe_allow_html=True,
 )
@@ -226,12 +413,12 @@ def _run_pipeline(use_case, technology, industry, run_id, session_id, version):
                     """
                     <div style="display:flex; align-items:center; gap:0.6rem;
                                 font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-                                padding:0.25rem 0 0.5rem; color:#FAFAFA;">
+                                padding:0.25rem 0 0.5rem; color:#202632;">
                         <span style="font-size:1.1rem;">⏱️</span>
                         <span style="font-variant-numeric:tabular-nums; font-weight:600;"
                               id="elapsed">0:00</span>
                         <span style="opacity:0.55; font-size:0.88rem;">
-                            · Typically 2–3 minutes · may take longer for complex or region-specific cases
+                            · Typically 3–5 minutes · may take longer for complex or region-specific cases
                         </span>
                     </div>
                     <script>
@@ -261,7 +448,8 @@ def _run_pipeline(use_case, technology, industry, run_id, session_id, version):
             st.write(f"✅ Scoped **{n_regimes}** regulations & standards to investigate ({time_scoping}s)")
             update_run_scope(run_id, scope)
 
-            status.update(label="Running compliance analysis… (step 2/3)")
+            # expanded=True on every step: an update without it collapses the box (v0.7.2)
+            status.update(label="Running compliance analysis… (step 2/3)", expanded=True)
 
             # Step 2 — Conduct tiered research (with lightweight adequacy retry — #7)
             st.write("🔬 **Conducting research** — searching the web for regulatory data…")
@@ -290,7 +478,7 @@ def _run_pipeline(use_case, technology, industry, run_id, session_id, version):
                 n_regimes, pct_tier1_sources,
             )
 
-            status.update(label="Running compliance analysis… (step 3/3)")
+            status.update(label="Running compliance analysis… (step 3/3)", expanded=True)
 
             # Step 3 — Analyze compliance
             st.write(
@@ -301,6 +489,10 @@ def _run_pipeline(use_case, technology, industry, run_id, session_id, version):
             analysis_result = analyze_compliance(
                 use_case, technology, industry, research_findings, scope, research["domains_searched"]
             )
+            # v0.7.2: an API error, a refusal, or a cut-off report is a failed run, never a report
+            if analysis_result.get("error"):
+                status.update(label="Analysis unavailable", state="error", expanded=True)
+                raise AnalysisError(analysis_result["error"])
             analysis = analysis_result["analysis"]
             time_analysis = round(time.time() - t0, 1)
             st.write(f"✅ Analysis complete ({time_analysis}s)")
@@ -355,17 +547,30 @@ if run_btn:
         st.error(f"Please fill in: **{', '.join(missing)}**")
         st.stop()
 
+    # v0.7.2: every run carries the email given on the email screen (already checked there)
+
     session_id = st.session_state.supabase_session_id
 
-    rate = is_rate_limited(session_id)
+    # Fails closed: if the count can't be read, the demo pauses instead of running unlimited
+    rate = is_rate_limited(email)
+    if rate["unavailable"]:
+        st.warning(UNAVAILABLE_MSG)
+        st.stop()
     if not rate["allowed"]:
         st.warning(
-            f"You've used all **{rate['limit']}** free analyses for this session. "
-            "Want to run more? I'd love to hear your feedback — "
-            "[reach out on LinkedIn](https://www.linkedin.com/in/yeyufreya/)."
+            f"You've reached {rate['limit']} demo reports for this email. For more, "
+            f"{BOOK_CALL_LINE}."
         )
         log_user_event(session_id, "rate_limited",
                        event_data={"used": rate["used"], "limit": rate["limit"]})
+        st.stop()
+
+    scenario_source = chosen_key if chosen_key else "custom"
+    run_id = start_run(session_id, use_case, technology, industry, scenario_source, VERSION,
+                       email=email)
+    # No run row means no email on record and nothing for the limit to count: pause, same as above
+    if not run_id:
+        st.warning(UNAVAILABLE_MSG)
         st.stop()
 
     st.session_state.result = None
@@ -373,12 +578,14 @@ if run_btn:
     st.session_state.report_path = None
     st.session_state.feedback_given = False
 
-    scenario_source = chosen_key if chosen_key else "custom"
-    run_id = start_run(session_id, use_case, technology, industry, scenario_source, VERSION)
     log_user_event(session_id, "analysis_started", run_id=run_id,
                    event_data={"use_case": use_case, "technology": technology, "industry": industry})
 
     _user_inputs = {"use_case": use_case, "technology": technology, "industry": industry}
+
+    # Grey out and lock the sidebar while the report runs; released in the finally below
+    sidebar_lock = st.empty()
+    sidebar_lock.markdown(SIDEBAR_LOCK_CSS, unsafe_allow_html=True)
 
     try:
         result = _run_pipeline(use_case, technology, industry, run_id, session_id, VERSION)
@@ -471,6 +678,9 @@ if run_btn:
                        event_data={"error_type": type(pipeline_err).__name__,
                                    "error_message": str(pipeline_err)[:500]})
 
+    finally:
+        sidebar_lock.empty()
+
 
 # ── Display results ───────────────────────────────────────────────────────────
 result = st.session_state.result
@@ -531,6 +741,32 @@ if result:
         for i, q in enumerate(result["search_queries"], 1):
             st.markdown(f"**{i}.** {q}")
 
+    # ── Action plan request (v0.7.2): one click, nothing typed again ──────────
+    # The demo report is the free tier; anything checked by a person is paid, by quote.
+    # Requests land in the free_report_requests table (name kept from the earlier offer).
+    st.divider()
+    run_id_for_req = st.session_state.get("current_run_id")
+    if run_id_for_req and st.session_state.get("request_sent_for") == run_id_for_req:
+        st.success(
+            "Request received. We'll email you within 3 business days with next steps "
+            "and a quote."
+        )
+    else:
+        st.markdown("**Want this checked, verified and tailored to your business?**")
+        if st.button("Request an AI compliance action plan", type="primary"):
+            # The email shown in the sidebar now, so a corrected address gets the reply
+            saved = save_free_report_request(
+                st.session_state.demo_email, run_id_for_req,
+                result["use_case"], result["technology"], result["industry"],
+            )
+            if saved:
+                st.session_state.request_sent_for = run_id_for_req
+                log_user_event(st.session_state.supabase_session_id, "action_plan_requested",
+                               run_id=run_id_for_req)
+                st.rerun()
+            else:
+                st.warning(UNAVAILABLE_MSG)
+
     st.divider()
 
     col_dl, col_path = st.columns([1, 3])
@@ -576,7 +812,8 @@ if result:
                 st.rerun()
 
 elif not run_btn:
-    st.info(
-        "Configure your analysis in the sidebar and click **Run Analysis** to start.",
-        icon="👈",
+    st.markdown(
+        '<div class="note">👈 Configure your analysis in the sidebar and click '
+        "<strong>Run Analysis</strong> to start.</div>",
+        unsafe_allow_html=True,
     )

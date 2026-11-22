@@ -4,12 +4,13 @@ AI agent observability (steps, thinking, tokens) is handled by Langfuse.
 
 All functions are fail-safe: Supabase errors are logged but never crash the app.
 If SUPABASE_URL / SUPABASE_KEY are missing, tracking is silently disabled.
+One exception by design (v0.7.2): is_rate_limited() fails closed, so the demo pauses.
 """
 
 import os
 import json
 import traceback as tb_module
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 _supabase_client = None
@@ -81,8 +82,13 @@ def start_run(
     industry: str,
     scenario_source: str,
     app_version: str,
+    email: str | None = None,
 ) -> str | None:
-    """Create an analysis_runs row with status='running'. Returns the run UUID."""
+    """Create an analysis_runs row with status='running'. Returns the run UUID.
+
+    v0.7.2: the demo passes the visitor's email (requires the analysis_runs.email column,
+    migrations/v0.7.2_email_and_requests.sql); the run limit counts by it.
+    """
     row = {
         "use_case": use_case,
         "technology": technology,
@@ -93,6 +99,8 @@ def start_run(
     }
     if session_id:
         row["session_id"] = session_id
+    if email:
+        row["email"] = email
 
     result = _supabase_client.from_("analysis_runs").insert(row).execute()
     return result.data[0]["id"]
@@ -176,6 +184,49 @@ def log_user_event(
     _supabase_client.from_("user_events").insert(row).execute()
 
 
+# ── Demo access (v0.7.2 email screen) ─────────────────────────────────────────
+
+DEMO_ACCESS_DAYS = 7
+
+@_safe
+def save_demo_access(session_id: str, email: str, access_code: str) -> bool:
+    """Record that a visitor entered the demo with this email.
+
+    Stored as a user_events row (event_type 'demo_access'), so no schema change. The access
+    code goes into the page address and lets the same visitor back in after a refresh.
+    Returns True on success, None (via _safe) on any Supabase failure.
+    """
+    _supabase_client.from_("user_events").insert({
+        "session_id": session_id,
+        "event_type": "demo_access",
+        "event_data": {"email": email, "access_code": access_code},
+    }).execute()
+    return True
+
+
+@_safe
+def find_demo_access(access_code: str) -> str | None:
+    """Return the email behind an access code issued in the last DEMO_ACCESS_DAYS days.
+
+    None when the code is unknown or too old, and (via _safe) on any Supabase failure;
+    either way the visitor is asked for their email again.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=DEMO_ACCESS_DAYS)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    result = (_supabase_client
+              .from_("user_events")
+              .select("event_data")
+              .eq("event_type", "demo_access")
+              .eq("event_data->>access_code", access_code)
+              .gte("created_at", cutoff)
+              .limit(1)
+              .execute())
+    if result.data:
+        return (result.data[0].get("event_data") or {}).get("email")
+    return None
+
+
 # ── Report persistence ────────────────────────────────────────────────────────
 
 @_safe
@@ -192,6 +243,34 @@ def save_report_to_db(
         "search_queries": json.dumps(search_queries),
         "report_filename": report_filename,
     }).execute()
+
+
+# ── Free-report requests (v0.7.2) ─────────────────────────────────────────────
+
+@_safe
+def save_free_report_request(
+    email: str,
+    run_id: str | None,
+    use_case: str,
+    technology: str,
+    industry: str,
+) -> bool:
+    """Record a one-click free-report request from the end of a demo report.
+
+    The inputs are copied onto the row so the daily check reads one table, no joins.
+    Returns True when saved; None (via _safe) when Supabase is down or disabled.
+    """
+    row = {
+        "email": email,
+        "use_case": use_case,
+        "technology": technology,
+        "industry": industry,
+    }
+    if run_id:
+        row["run_id"] = run_id
+
+    _supabase_client.from_("free_report_requests").insert(row).execute()
+    return True
 
 
 # ── Error logging ─────────────────────────────────────────────────────────────
@@ -237,31 +316,39 @@ def mark_run_failed(run_id: str, error: Exception) -> None:
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 
-MAX_RUNS_PER_SESSION = 3
+MAX_RUNS_PER_EMAIL = 3
 
 @_safe
-def check_rate_limit(session_id: str) -> dict:
-    """Check if a session has exceeded the analysis limit.
+def check_rate_limit(email: str) -> dict:
+    """Check if an email has used up its demo reports.
 
-    Returns {"allowed": True/False, "used": N, "limit": N}.
-    If Supabase is unavailable, defaults to allowing the request.
+    v0.7.2: counted per email (was per browser session, which reset on refresh). Runs that
+    failed on our side (status 'error') don't count; finished and still-running runs do.
+    Returns {"allowed": True/False, "used": N, "limit": N}, or None (via _safe) on any
+    Supabase failure.
     """
     result = (_supabase_client
               .from_("analysis_runs")
               .select("id", count="exact")
-              .eq("session_id", session_id)
+              .eq("email", email)
+              .neq("status", "error")
               .execute())
     used = result.count if result.count is not None else len(result.data)
     return {
-        "allowed": used < MAX_RUNS_PER_SESSION,
+        "allowed": used < MAX_RUNS_PER_EMAIL,
         "used": used,
-        "limit": MAX_RUNS_PER_SESSION,
+        "limit": MAX_RUNS_PER_EMAIL,
     }
 
 
-def is_rate_limited(session_id: str) -> dict:
-    """Public wrapper — returns rate limit status, defaults to allowed if Supabase is down."""
-    result = check_rate_limit(session_id)
+def is_rate_limited(email: str) -> dict:
+    """Public wrapper — returns rate limit status. Fails CLOSED (v0.7.2).
+
+    If the count can't be read (Supabase down, paused, not configured, or the email column
+    not migrated yet), the demo pauses rather than running with no limit and no record of
+    who ran it. "unavailable" tells the UI which message to show.
+    """
+    result = check_rate_limit(email)
     if result is None:
-        return {"allowed": True, "used": 0, "limit": MAX_RUNS_PER_SESSION}
-    return result
+        return {"allowed": False, "unavailable": True, "used": 0, "limit": MAX_RUNS_PER_EMAIL}
+    return {**result, "unavailable": False}

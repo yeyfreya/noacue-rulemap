@@ -6,7 +6,7 @@ The previous version takes three inputs (your AI use case, your technology and y
 
 **How it handles your data.** It runs on a large hosted model and a hosted search tool, with your own keys. What you type is sent to those two providers. Rulemap is designed to work differently: see "How your data is handled" in the README.
 
-The hosted demo of the previous version is locked for now. To try it, run it on your own machine.
+Try the hosted demo: https://ai-compliance-gap-analyzer.streamlit.app/ You can also run it on your own machine.
 
 ## Run it locally
 

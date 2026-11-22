@@ -1,7 +1,8 @@
-anthropic>=0.79.0
-tavily-python>=0.7.21
-streamlit>=1.54.0
-python-dotenv>=1.2.0
-postgrest>=2.28.0
-langfuse>=4.0.0b1
-opentelemetry-instrumentation-anthropic>=0.35.0
+# Exact versions, pinned in v0.7.2: the live demo installs what was tested locally.
+anthropic==0.79.0
+tavily-python==0.7.21
+streamlit==1.54.0
+python-dotenv==1.2.1
+postgrest==2.28.0
+langfuse==4.0.0b1
+opentelemetry-instrumentation-anthropic==0.52.6

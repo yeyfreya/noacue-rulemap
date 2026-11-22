@@ -582,7 +582,7 @@ td .linkish { font-weight: 500; }
   var state = {
     added: ["learning"],          /* the sample starts with one checked case */
     selected: null,               /* { type: "rule" | "case", id } */
-    view: window.innerWidth < 700 ? "list" : "graph",
+    view: "graph",                /* the picture first on every screen; the List button is one tap away */
     running: false,
     runCase: null,
     lastRun: null                 /* the case most recently run in this visit */

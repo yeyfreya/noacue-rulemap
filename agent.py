@@ -9,6 +9,7 @@ import json
 import time
 import csv
 from datetime import datetime
+from urllib.parse import urlparse
 import anthropic
 from dotenv import load_dotenv
 from langfuse import observe, get_client as get_langfuse_client
@@ -25,6 +26,19 @@ AnthropicInstrumentor().instrument()
 
 # Initialize Claude client
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+# ── Model settings (v0.7.2) — shared by both Claude calls ────────────────────
+# Opus 5.5 always thinks; effort is the only control for how much (its default is
+# "medium", so it is set explicitly). Thinking counts toward max_tokens, hence 16000.
+# Without display="summarized" the thinking text comes back empty and Langfuse logs nothing.
+MODEL = "claude-opus-5-5"
+MAX_TOKENS = 16000
+THINKING = {"type": "adaptive", "display": "summarized"}
+OUTPUT_CONFIG = {"effort": "high"}
+# Server-side refusal fallback: if a safety classifier declines a request, the API re-runs it
+# on Anthropic's recommended fallback model in the same call. A report served that way was
+# written by a different model — response.model says which, and Langfuse records it.
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
 def _today() -> str:
@@ -50,6 +64,47 @@ class ScopingError(Exception):
     """Raised when the scoping step fails to produce usable JSON after a retry.
     The pipeline aborts honestly rather than falling back to the v0.6 planner,
     which failed its accuracy test."""
+
+
+class AnalysisError(Exception):
+    """Raised by callers when analyze_compliance() returns an "error" key (API error,
+    refusal, or a report cut off at max_tokens). Whatever text came back is not a report
+    and must not be saved, shown, or counted as one."""
+
+
+def _create_message(prompt: str):
+    """One Claude call with the shared v0.7.2 model settings and the refusal fallback."""
+    return client.beta.messages.create(
+        model=MODEL,
+        max_tokens=MAX_TOKENS,
+        thinking=THINKING,
+        output_config=OUTPUT_CONFIG,
+        betas=[FALLBACK_BETA],
+        extra_body={"fallbacks": "default"},  # anthropic 0.79 has no typed `fallbacks` param
+        system=SYSTEM_PROMPT,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+
+def _extract(response) -> tuple[str, str]:
+    """Return (thinking_text, response_text), each joined across its blocks.
+
+    Read by block type, never by position: a response can open with several thinking
+    blocks, and a fallback adds a block of its own.
+    """
+    thinking_text = "\n\n".join(
+        b.thinking for b in response.content if b.type == "thinking" and b.thinking
+    )
+    response_text = "".join(b.text for b in response.content if b.type == "text")
+    return thinking_text, response_text
+
+
+def _note_fallback(response, step: str) -> None:
+    """Say so when the fallback model, not MODEL, wrote this response."""
+    if not str(response.model).startswith(MODEL):
+        print(f"⚠️ {step}: {MODEL} declined; fallback model {response.model} answered")
 
 
 def _retry_api_call(fn, max_retries=1, backoff_sec=2.0):
@@ -108,25 +163,13 @@ def scope_analysis(use_case: str, technology: str, industry: str) -> dict:
     )
 
     def _call():
-        return client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=6000,
-            thinking={"type": "enabled", "budget_tokens": 3000},
-            system=SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-
-    def _extract(response):
-        thinking_text = ""
-        response_text = ""
-        for block in response.content:
-            if block.type == "thinking":
-                thinking_text = block.thinking
-            elif block.type == "text":
-                response_text = block.text
-        return thinking_text, response_text
+        response = _create_message(prompt)
+        # A refusal means the safety check declined on both MODEL and the fallback; the
+        # content is empty or partial, so there is nothing to parse or retry.
+        if response.stop_reason == "refusal":
+            raise ScopingError("Scoping was declined by a safety check (stop_reason: refusal).")
+        _note_fallback(response, "Scoping")
+        return response
 
     def _parse(response_text: str) -> dict:
         start = response_text.find('{')
@@ -185,6 +228,46 @@ def _tag_tier(formatted_block: str, tier: int) -> str:
     """Prefix each result block in a format_search_results() string with its tier tag."""
     tag = "[TIER 1 — official source]" if tier == 1 else "[TIER 2 — commentary]"
     return re.sub(r'--- Result (\d+) ---', rf'--- Result \1 {tag} ---', formatted_block)
+
+
+def _host_of(value: str) -> str:
+    """Bare lowercase host of a URL or a domain string: 'https://www.hhs.gov/x' -> 'hhs.gov'.
+
+    A string the URL parser rejects yields "", which the tier check treats as not official.
+    A malformed URL must demote one source, never stop the run.
+    """
+    try:
+        netloc = urlparse(value if "://" in value else f"https://{value}").netloc
+    except ValueError:
+        return ""
+    return netloc.lower().split(":")[0].removeprefix("www.")
+
+
+def _in_official_domains(url: str, official_domains: list) -> bool:
+    """True only when the URL's host is one of official_domains or a subdomain of one.
+
+    v0.7.1. This is the check the tier tag was missing. The search provider's domain
+    filter backfills, and the model cannot be asked, so the label is verified here,
+    in code, before it is written.
+    """
+    host = _host_of(url)
+    if not host:
+        return False
+    for d in official_domains:
+        d = _host_of(d)
+        if d and (host == d or host.endswith("." + d)):
+            return True
+    return False
+
+
+def _tag_tiers(formatted_block: str, tiers: list) -> str:
+    """Prefix each result block with its own verified tier tag (tiers[i] is for Result i+1)."""
+    def _sub(m):
+        i = int(m.group(1)) - 1
+        tier = tiers[i] if i < len(tiers) else 2
+        tag = "[TIER 1 — official source]" if tier == 1 else "[TIER 2 — commentary]"
+        return f"--- Result {m.group(1)} {tag} ---"
+    return re.sub(r'--- Result (\d+) ---', _sub, formatted_block)
 
 
 # ── Research adequacy (#7) ────────────────────────────────────────────────────
@@ -275,6 +358,7 @@ def _merge_research(first: dict, second: dict) -> dict:
         "num_results": len(merged_sources),
         "tier1_count": first.get("tier1_count", 0) + second.get("tier1_count", 0),
         "tier2_count": first.get("tier2_count", 0) + second.get("tier2_count", 0),
+        "demoted_count": first.get("demoted_count", 0) + second.get("demoted_count", 0),
         "regimes_searched": first.get("regimes_searched", []) + second.get("regimes_searched", []),
         "domains_searched": first.get("domains_searched", []),
     }
@@ -303,8 +387,9 @@ def gather_research(use_case: str, technology: str, industry: str, scope: dict) 
             failed_queries (list[str]): queries where both tiers returned nothing
             executed_queries (list[str]): every query actually run, in order
             num_results (int): total number of results across all regimes
-            tier1_count (int): results that came from an official-domain-restricted search
-            tier2_count (int): results that came from an unrestricted fallback search
+            tier1_count (int): results whose URL host was verified against official_domains
+            tier2_count (int): results from an unrestricted fallback search, or demoted
+            demoted_count (int): Tier 1 search results demoted because their host was not official
             regimes_searched (list[str]): regime names actually searched
             domains_searched (list[str]): official_domains actually passed to Tier 1
     """
@@ -322,6 +407,7 @@ def gather_research(use_case: str, technology: str, industry: str, scope: dict) 
     regimes_searched = []
     tier1_count = 0
     tier2_count = 0
+    demoted_count = 0
 
     for regime in searchable:
         query = regime.get("search_query", "")
@@ -337,18 +423,27 @@ def gather_research(use_case: str, technology: str, industry: str, scope: dict) 
         tier1_results = tier1_response.get('results', [])
 
         if tier1_results:
-            tier = 1
             results = tier1_results
+            searched_tier = 1
         else:
             tier2_response = search_web(query, max_results=3)
             results = tier2_response.get('results', [])
-            tier = 2
+            searched_tier = 2
 
         if results:
             successful_queries.append(query)
             all_text.append(f"\n=== Rulebook: {name} (status: {status}) ===")
-            all_text.append(_tag_tier(format_search_results(results), tier))
+            # v0.7.1: the tier is verified per URL, in code, before the tag is written.
+            # A Tier 1 search can return URLs outside official_domains; they are demoted
+            # here instead of inheriting the label from the search that produced them.
+            tiers = []
             for r in results:
+                tier = 1 if searched_tier == 1 and _in_official_domains(r.get("url", ""), official_domains) else 2
+                if searched_tier == 1 and tier == 2:
+                    demoted_count += 1
+                tiers.append(tier)
+            all_text.append(_tag_tiers(format_search_results(results), tiers))
+            for r, tier in zip(results, tiers):
                 sources.append({
                     "title": r.get("title", ""),
                     "url": r.get("url", ""),
@@ -356,13 +451,15 @@ def gather_research(use_case: str, technology: str, industry: str, scope: dict) 
                     "tier": tier,
                     "regime": name,
                 })
-            if tier == 1:
-                tier1_count += len(results)
-            else:
-                tier2_count += len(results)
+                if tier == 1:
+                    tier1_count += 1
+                else:
+                    tier2_count += 1
         else:
             # Both tiers came back empty — record it so the pipeline can react
             failed_queries.append(query)
+
+    print(f"   🛡️ Tier check: {demoted_count} result(s) outside the official domains demoted to Tier 2")
 
     research = {
         "findings_text": "\n".join(all_text),
@@ -373,6 +470,7 @@ def gather_research(use_case: str, technology: str, industry: str, scope: dict) 
         "num_results": len(sources),
         "tier1_count": tier1_count,
         "tier2_count": tier2_count,
+        "demoted_count": demoted_count,
         "regimes_searched": regimes_searched,
         "domains_searched": official_domains,
     }
@@ -431,6 +529,28 @@ def score_research_quality(
         print(f"⚠️ Langfuse research-quality scoring skipped: {e}")
 
 
+def _link_official_domains(analysis: str, domains: list) -> str:
+    """Make the domains in the report's "Official sources searched" list clickable.
+
+    Presentation only. It touches just the part of the report after that label and before
+    the next heading, and links only domains that were actually searched, so nothing is
+    added or invented. A domain already inside a link or a longer address is left alone.
+    """
+    start = analysis.find("Official sources searched")
+    if start == -1 or not domains:
+        return analysis
+    end = analysis.find("\n#", start)
+    if end == -1:
+        end = len(analysis)
+    section = analysis[start:end]
+    for domain in sorted({(d or "").strip() for d in domains}, key=len, reverse=True):
+        if not domain:
+            continue
+        bare = re.compile(r"(?<![\w./\[(@-])" + re.escape(domain) + r"(?![\w/-]|\.\w|\]|\))")
+        section = bare.sub(f"[{domain}](https://{domain})", section)
+    return analysis[:start] + section + analysis[end:]
+
+
 # Function 3: analyze_compliance() - Ask Claude to analyze
 @observe()
 def analyze_compliance(
@@ -473,15 +593,7 @@ def analyze_compliance(
     )
 
     try:
-        response = _retry_api_call(lambda: client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=8000,
-            thinking={"type": "enabled", "budget_tokens": 4000},
-            system=SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        ))
+        response = _retry_api_call(lambda: _create_message(prompt))
     except anthropic.APIError as e:
         print(f"❌ Claude API error during analysis: {e}")
         return {
@@ -492,16 +604,25 @@ def analyze_compliance(
             "error": f"analyze_compliance API error: {e}",
         }
 
-    thinking_text = ""
-    analysis_text = ""
-    for block in response.content:
-        if block.type == "thinking":
-            thinking_text = block.thinking
-        elif block.type == "text":
-            analysis_text = block.text
+    # v0.7.2: a refusal (declined on MODEL and the fallback) leaves no report, and a response
+    # stopped at max_tokens is a report cut off mid-sentence. Neither may be shown as a report.
+    if response.stop_reason in ("refusal", "max_tokens"):
+        reason = ("declined by a safety check" if response.stop_reason == "refusal"
+                  else f"cut off at the {MAX_TOKENS}-token limit")
+        print(f"❌ Analysis {reason}")
+        return {
+            "analysis": "",
+            "thinking": None,
+            "tokens_in": response.usage.input_tokens,
+            "tokens_out": response.usage.output_tokens,
+            "error": f"analyze_compliance: report {reason} (stop_reason: {response.stop_reason})",
+        }
+    _note_fallback(response, "Analysis")
+
+    thinking_text, analysis_text = _extract(response)
 
     return {
-        "analysis": analysis_text,
+        "analysis": _link_official_domains(analysis_text, domains_searched),
         "thinking": thinking_text,
         "tokens_in": response.usage.input_tokens,
         "tokens_out": response.usage.output_tokens,
@@ -509,7 +630,7 @@ def analyze_compliance(
 
 
 # Function 4: save_report() - Persist results to a file
-def save_report(result: dict, version: str = "v0.7", output_dir: str | None = None, run_id: str | None = None) -> str:
+def save_report(result: dict, version: str = "v0.7.2", output_dir: str | None = None, run_id: str | None = None) -> str:
     """
     Save the analysis report to a timestamped file named after the use case.
 
@@ -603,7 +724,7 @@ def save_report(result: dict, version: str = "v0.7", output_dir: str | None = No
 
 # Function 5: run_analysis() - Orchestrate everything
 @observe()
-def run_analysis(use_case: str, technology: str, industry: str, version: str = "v0.7") -> dict:
+def run_analysis(use_case: str, technology: str, industry: str, version: str = "v0.7.2") -> dict:
     """
     Main function to run complete compliance gap analysis.
 
@@ -673,6 +794,9 @@ def run_analysis(use_case: str, technology: str, industry: str, version: str = "
     analysis_result = analyze_compliance(
         use_case, technology, industry, research_findings, scope, research["domains_searched"]
     )
+    if analysis_result.get("error"):
+        print(f"\n❌ {analysis_result['error']} — no report saved.")
+        return {"error": f"Analysis failed: {analysis_result['error']}. Please try again."}
     analysis = analysis_result["analysis"]
     time_analysis = time.time() - t0
 
@@ -808,7 +932,7 @@ TEST_SCENARIOS = {
     },
     "regtech": {
         "use_case": "AI agent powered compliance gap analyzer",
-        "technology": "Anthropic Claude Sonnet 4.5",
+        "technology": "Anthropic Claude Opus 5.5",
         "industry": "RegTech / AI compliance SaaS — serving early-stage AI startups",
     },
 }
